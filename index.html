@@ -7,13 +7,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <title>FinanceFlow v5.8</title>
+    <title>FinanceFlow v6.0</title>
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
         .savings-row { background-color: rgba(240, 249, 255, 0.4); }
         .modal { transition: opacity 0.2s ease; visibility: hidden; opacity: 0; }
         .modal.active { visibility: visible; opacity: 1; }
         body.modal-active { overflow: hidden; }
+        /* Custom scrollbar for better mobile UX */
+        .custom-scrollbar::-webkit-scrollbar { height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
     </style>
 </head>
 <body class="bg-slate-50 p-4 md:p-8">
@@ -26,26 +29,27 @@
         </header>
 
         <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-            <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                <p class="text-[10px] font-black text-slate-400 uppercase">Liquid Net Balance</p>
-                <h2 id="net-today" class="text-2xl font-black text-slate-800">$0.00</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+                <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Liquid Net</p>
+                <h2 id="net-today" class="text-lg md:text-2xl font-black text-slate-800">$0</h2>
             </div>
-            <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                <p class="text-[10px] font-black text-sky-400 uppercase">Savings Pool</p>
-                <h2 id="savings-pool" class="text-2xl font-black text-sky-600">$0.00</h2>
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+                <p class="text-[9px] font-black text-sky-400 uppercase mb-1">Savings</p>
+                <h2 id="savings-pool" class="text-lg md:text-2xl font-black text-sky-600">$0</h2>
             </div>
-            <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                <p class="text-[10px] font-black text-indigo-400 uppercase">Future Liquid Commits</p>
-                <h2 id="future-total" class="text-2xl font-black text-indigo-600">$0.00</h2>
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+                <p class="text-[9px] font-black text-indigo-400 uppercase mb-1">Future</p>
+                <h2 id="future-total" class="text-lg md:text-2xl font-black text-indigo-600">$0</h2>
             </div>
-            <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                <p class="text-[10px] font-black text-emerald-400 uppercase">1-Yr Prognosis</p>
-                <h2 id="prognosis" class="text-2xl font-black text-emerald-600">$0.00</h2>
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+                <p class="text-[9px] font-black text-emerald-400 uppercase mb-1">1-Yr Prognosis</p>
+                <h2 id="prognosis" class="text-lg md:text-2xl font-black text-emerald-600">$0</h2>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Sidebar: Input -->
             <div class="lg:col-span-1">
                 <div class="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 sticky top-8">
                     <h3 class="font-bold text-lg mb-6 text-slate-800">New Entry</h3>
@@ -62,43 +66,52 @@
                         </div>
                         <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
                             <input id="is_savings" type="checkbox" class="w-5 h-5 accent-sky-500">
-                            <label for="is_savings" class="text-xs font-bold text-slate-500 uppercase">Savings (Hidden from Flow)</label>
+                            <label for="is_savings" class="text-[10px] font-black text-slate-500 uppercase">Mark as Savings</label>
                         </div>
-                        <button onclick="addTransaction()" class="w-full bg-slate-900 text-white font-black py-4 rounded-2xl hover:bg-black shadow-lg">Save Transaction</button>
+                        <button onclick="addTransaction()" class="w-full bg-slate-900 text-white font-black py-4 rounded-2xl hover:bg-black shadow-lg transition-transform active:scale-95">Save Entry</button>
                     </div>
                 </div>
             </div>
 
+            <!-- Content Area -->
             <div class="lg:col-span-2 space-y-8">
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase">Projected Liquid Balance</h3>
+                    <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase tracking-widest">Liquid Balance</h3>
                     <div class="h-64"><canvas id="lineChart"></canvas></div>
                 </div>
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase">Liquid Distribution</h3>
-                    <div id="sankey_chart" style="height: 300px;"></div>
-                </div>
+                
+                <!-- Table with Mobile Scrolling Fix -->
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                    <table class="w-full text-left">
-                        <thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            <tr>
-                                <th class="px-6 py-4">Date</th>
-                                <th class="px-6 py-4">Entry</th>
-                                <th class="px-6 py-4 text-right">Amount</th>
-                                <th class="px-6 py-4 text-center">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="history-body" class="divide-y divide-slate-50"></tbody>
-                    </table>
+                    <div class="p-5 border-b border-slate-50">
+                        <h3 class="font-bold text-slate-800 text-sm uppercase">Transaction History</h3>
+                    </div>
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left min-w-[600px]">
+                            <thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                <tr>
+                                    <th class="px-6 py-4">Date & Status</th>
+                                    <th class="px-6 py-4">Description</th>
+                                    <th class="px-6 py-4 text-right">Amount</th>
+                                    <th class="px-6 py-4 text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-body" class="divide-y divide-slate-50"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase tracking-widest">Liquid Distribution</h3>
+                    <div id="sankey_chart" style="height: 300px;"></div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Edit Modal -->
-    <div id="editModal" class="modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+    <div id="editModal" class="modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
         <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl relative">
-            <h3 class="text-2xl font-black mb-6">Edit Entry</h3>
+            <h3 class="text-2xl font-black mb-6">Modify Entry</h3>
             <div class="space-y-4">
                 <input id="edit_id" type="hidden">
                 <input id="edit_date" type="date" class="w-full border p-3 rounded-xl outline-none">
@@ -113,11 +126,11 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <input id="edit_savings" type="checkbox" class="w-5 h-5">
-                    <label class="text-xs font-bold uppercase text-slate-500">Mark as Savings</label>
+                    <label class="text-[10px] font-black uppercase text-slate-500">Savings Entry</label>
                 </div>
                 <div class="flex gap-2 pt-4">
-                    <button onclick="closeEditModal()" class="flex-1 py-3 font-bold text-slate-400 hover:text-slate-600">Cancel</button>
-                    <button onclick="saveEdit()" class="flex-1 py-3 bg-indigo-600 text-white font-black rounded-xl shadow-lg">Save Changes</button>
+                    <button onclick="closeEditModal()" class="flex-1 py-3 font-bold text-slate-400">Cancel</button>
+                    <button onclick="saveEdit()" class="flex-1 py-3 bg-indigo-600 text-white font-black rounded-xl shadow-lg">Update</button>
                 </div>
             </div>
         </div>
@@ -151,14 +164,13 @@
                 created_at: new Date(document.getElementById('date').value).toISOString()
             };
             await supabaseClient.from('transactions').insert([payload]);
-            resetForm();
+            document.getElementById('desc').value = ''; 
+            document.getElementById('amount').value = '';
             init();
         }
 
         async function confirmTransaction(id) {
-            // Logic: Set the transaction date to RIGHT NOW
-            const now = new Date().toISOString();
-            await supabaseClient.from('transactions').update({ created_at: now }).eq('id', id);
+            await supabaseClient.from('transactions').update({ created_at: new Date().toISOString() }).eq('id', id);
             init();
         }
 
@@ -172,13 +184,9 @@
             document.getElementById('edit_label').value = t.label_id;
             document.getElementById('edit_savings').checked = t.is_savings;
             document.getElementById('editModal').classList.add('active');
-            document.body.classList.add('modal-active');
         }
 
-        function closeEditModal() {
-            document.getElementById('editModal').classList.remove('active');
-            document.body.classList.remove('modal-active');
-        }
+        function closeEditModal() { document.getElementById('editModal').classList.remove('active'); }
 
         async function saveEdit() {
             const id = document.getElementById('edit_id').value;
@@ -208,7 +216,7 @@
                 const isInc = t.type === 'income';
                 const tDate = new Date(t.created_at);
                 const isFuture = tDate > now;
-                const label = t.labels?.name || 'General';
+                const label = t.labels?.name || 'Unlabeled';
 
                 if (t.is_savings) {
                     savingsPool += (isInc ? amt : -amt);
@@ -216,32 +224,30 @@
                     isInc ? runningBal += amt : runningBal -= amt;
                     if (isFuture) { futureTotal += (isInc ? amt : -amt); } 
                     else { isInc ? netToday += amt : netToday -= amt; }
-                    
                     if (isInc) totalLiquidIncome += amt;
                     else sankeyRows.push(['Active Income', label, amt]);
-                    
                     timeline.push({ x: tDate.toLocaleDateString(), y: runningBal, isFuture });
                 }
 
                 historyBody.insertAdjacentHTML('afterbegin', `
                     <tr class="${isFuture ? 'future-row' : ''} ${t.is_savings ? 'savings-row' : ''}">
-                        <td class="px-6 py-4 text-[10px] font-bold text-slate-400">
-                            ${tDate.toLocaleDateString()}<br>
-                            ${isFuture ? '<span class="text-indigo-600 font-black">[FUTURE]</span>' : ''}
-                            ${t.is_savings ? '<span class="text-sky-500 font-black">[SAVINGS]</span>' : ''}
+                        <td class="px-6 py-4">
+                            <span class="text-[10px] font-black text-slate-400">${tDate.toLocaleDateString()}</span><br>
+                            ${isFuture ? '<span class="text-[8px] text-indigo-600 font-black">[FUTURE]</span>' : ''}
+                            ${t.is_savings ? '<span class="text-[8px] text-sky-500 font-black">[SAVINGS]</span>' : ''}
                         </td>
                         <td class="px-6 py-4">
-                            <div class="font-bold text-slate-800">${t.description}</div>
+                            <div class="font-bold text-slate-800 text-sm">${t.description}</div>
                             <div class="text-[9px] uppercase font-black text-slate-400">${label}</div>
                         </td>
                         <td class="px-6 py-4 text-right font-black ${isInc ? 'text-emerald-500' : 'text-rose-500'}">
                             ${isInc ? '+' : '-'}$${amt.toLocaleString()}
                         </td>
                         <td class="px-6 py-4 text-center">
-                            <div class="flex justify-center gap-3">
-                                ${isFuture ? `<button onclick="confirmTransaction('${t.id}')" class="text-indigo-600 font-black text-[10px] bg-indigo-50 px-2 py-1 rounded-md hover:bg-indigo-600 hover:text-white transition">CONFIRM</button>` : ''}
-                                <button onclick="openEditModal('${t.id}')" class="text-slate-400 hover:text-slate-800 text-xs font-bold">EDIT</button>
-                                <button onclick="deleteTransaction('${t.id}')" class="text-slate-300 hover:text-rose-500 text-lg">×</button>
+                            <div class="flex items-center justify-center gap-2">
+                                ${isFuture ? `<button onclick="confirmTransaction('${t.id}')" class="text-indigo-600 font-black text-[9px] bg-indigo-50 px-2 py-1 rounded border border-indigo-100">CONFIRM</button>` : ''}
+                                <button onclick="openEditModal('${t.id}')" class="text-slate-400 hover:text-slate-800 text-[9px] font-black uppercase">Edit</button>
+                                <button onclick="deleteTransaction('${t.id}')" class="text-slate-300 hover:text-rose-500 text-xl">×</button>
                             </div>
                         </td>
                     </tr>`);
@@ -266,16 +272,16 @@
                 data: {
                     labels: timeline.map(d => d.x),
                     datasets: [{
-                        label: 'Liquid Balance',
+                        label: 'Balance',
                         data: timeline.map(d => d.y),
                         borderColor: '#6366f1',
-                        borderWidth: 3,
+                        borderWidth: 2,
                         tension: 0.3,
-                        pointRadius: 2,
+                        pointRadius: 0,
                         segment: { borderDash: ctx => timeline[ctx.p1DataIndex]?.isFuture ? [5, 5] : undefined }
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false } } }
             });
         }
 
@@ -289,13 +295,7 @@
             });
         }
 
-        function resetForm() {
-            document.getElementById('desc').value = '';
-            document.getElementById('amount').value = '';
-            document.getElementById('is_savings').checked = false;
-        }
-
-        async function deleteTransaction(id) { if (confirm("Delete this entry?")) { await supabaseClient.from('transactions').delete().eq('id', id); init(); } }
+        async function deleteTransaction(id) { if (confirm("Delete this?")) { await supabaseClient.from('transactions').delete().eq('id', id); init(); } }
         google.charts.setOnLoadCallback(init);
     </script>
 </body>
