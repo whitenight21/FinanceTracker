@@ -7,10 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <title>FinanceFlow v5.5</title>
+    <title>FinanceFlow v5.8</title>
     <style>
-        .future-row { background-color: rgba(99, 102, 241, 0.03); border-left: 4px solid #6366f1; }
+        .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
         .savings-row { background-color: rgba(240, 249, 255, 0.4); }
+        .modal { transition: opacity 0.2s ease; visibility: hidden; opacity: 0; }
+        .modal.active { visibility: visible; opacity: 1; }
         body.modal-active { overflow: hidden; }
     </style>
 </head>
@@ -30,7 +32,7 @@
                 <h2 id="net-today" class="text-2xl font-black text-slate-800">$0.00</h2>
             </div>
             <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                <p class="text-[10px] font-black text-sky-400 uppercase">Savings Pool (Isolated)</p>
+                <p class="text-[10px] font-black text-sky-400 uppercase">Savings Pool</p>
                 <h2 id="savings-pool" class="text-2xl font-black text-sky-600">$0.00</h2>
             </div>
             <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
@@ -38,14 +40,14 @@
                 <h2 id="future-total" class="text-2xl font-black text-indigo-600">$0.00</h2>
             </div>
             <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                <p class="text-[10px] font-black text-emerald-400 uppercase">1-Yr Liquid Prognosis</p>
+                <p class="text-[10px] font-black text-emerald-400 uppercase">1-Yr Prognosis</p>
                 <h2 id="prognosis" class="text-2xl font-black text-emerald-600">$0.00</h2>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div class="lg:col-span-1">
-                <div class="bg-white p-6 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-8">
+                <div class="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 sticky top-8">
                     <h3 class="font-bold text-lg mb-6 text-slate-800">New Entry</h3>
                     <div class="space-y-4">
                         <input id="date" type="date" class="w-full border-slate-200 border p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
@@ -60,7 +62,7 @@
                         </div>
                         <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
                             <input id="is_savings" type="checkbox" class="w-5 h-5 accent-sky-500">
-                            <label for="is_savings" class="text-xs font-bold text-slate-500 uppercase">Mark as Savings (Hidden from Flow)</label>
+                            <label for="is_savings" class="text-xs font-bold text-slate-500 uppercase">Savings (Hidden from Flow)</label>
                         </div>
                         <button onclick="addTransaction()" class="w-full bg-slate-900 text-white font-black py-4 rounded-2xl hover:bg-black shadow-lg">Save Transaction</button>
                     </div>
@@ -69,27 +71,53 @@
 
             <div class="lg:col-span-2 space-y-8">
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="font-bold text-slate-700 mb-4 text-sm uppercase">Liquid Balance Timeline (Excludes Savings)</h3>
+                    <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase">Projected Liquid Balance</h3>
                     <div class="h-64"><canvas id="lineChart"></canvas></div>
                 </div>
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="font-bold text-slate-700 mb-4 text-sm uppercase">Liquid Flow Distribution</h3>
+                    <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase">Liquid Distribution</h3>
                     <div id="sankey_chart" style="height: 300px;"></div>
                 </div>
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                <tr>
-                                    <th class="px-6 py-4">Date</th>
-                                    <th class="px-6 py-4">Entry</th>
-                                    <th class="px-6 py-4 text-right">Amount</th>
-                                    <th class="px-6 py-4 text-center">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="history-body" class="divide-y divide-slate-50"></tbody>
-                        </table>
-                    </div>
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            <tr>
+                                <th class="px-6 py-4">Date</th>
+                                <th class="px-6 py-4">Entry</th>
+                                <th class="px-6 py-4 text-right">Amount</th>
+                                <th class="px-6 py-4 text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-body" class="divide-y divide-slate-50"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+        <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl relative">
+            <h3 class="text-2xl font-black mb-6">Edit Entry</h3>
+            <div class="space-y-4">
+                <input id="edit_id" type="hidden">
+                <input id="edit_date" type="date" class="w-full border p-3 rounded-xl outline-none">
+                <input id="edit_desc" type="text" class="w-full border p-3 rounded-xl outline-none">
+                <input id="edit_amount" type="number" class="w-full border p-3 rounded-xl outline-none font-bold">
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="edit_type" class="border p-3 rounded-xl bg-slate-50">
+                        <option value="income">Income</option>
+                        <option value="expense">Expense</option>
+                    </select>
+                    <select id="edit_label" class="border p-3 rounded-xl bg-slate-50"></select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input id="edit_savings" type="checkbox" class="w-5 h-5">
+                    <label class="text-xs font-bold uppercase text-slate-500">Mark as Savings</label>
+                </div>
+                <div class="flex gap-2 pt-4">
+                    <button onclick="closeEditModal()" class="flex-1 py-3 font-bold text-slate-400 hover:text-slate-600">Cancel</button>
+                    <button onclick="saveEdit()" class="flex-1 py-3 bg-indigo-600 text-white font-black rounded-xl shadow-lg">Save Changes</button>
                 </div>
             </div>
         </div>
@@ -107,7 +135,9 @@
 
         async function init() {
             const { data: labels } = await supabaseClient.from('labels').select('*').order('name');
-            document.getElementById('label_select').innerHTML = labels.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+            const labelOptions = labels.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+            document.getElementById('label_select').innerHTML = labelOptions;
+            document.getElementById('edit_label').innerHTML = labelOptions;
             calculateStats();
         }
 
@@ -121,14 +151,47 @@
                 created_at: new Date(document.getElementById('date').value).toISOString()
             };
             await supabaseClient.from('transactions').insert([payload]);
-            document.getElementById('desc').value = ''; 
-            document.getElementById('amount').value = '';
-            document.getElementById('is_savings').checked = false;
+            resetForm();
             init();
         }
 
         async function confirmTransaction(id) {
-            await supabaseClient.from('transactions').update({ created_at: new Date().toISOString() }).eq('id', id);
+            // Logic: Set the transaction date to RIGHT NOW
+            const now = new Date().toISOString();
+            await supabaseClient.from('transactions').update({ created_at: now }).eq('id', id);
+            init();
+        }
+
+        async function openEditModal(id) {
+            const { data: t } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
+            document.getElementById('edit_id').value = t.id;
+            document.getElementById('edit_date').value = t.created_at.split('T')[0];
+            document.getElementById('edit_desc').value = t.description;
+            document.getElementById('edit_amount').value = t.amount;
+            document.getElementById('edit_type').value = t.type;
+            document.getElementById('edit_label').value = t.label_id;
+            document.getElementById('edit_savings').checked = t.is_savings;
+            document.getElementById('editModal').classList.add('active');
+            document.body.classList.add('modal-active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            document.body.classList.remove('modal-active');
+        }
+
+        async function saveEdit() {
+            const id = document.getElementById('edit_id').value;
+            const payload = {
+                description: document.getElementById('edit_desc').value,
+                amount: parseFloat(document.getElementById('edit_amount').value),
+                type: document.getElementById('edit_type').value,
+                label_id: document.getElementById('edit_label').value,
+                is_savings: document.getElementById('edit_savings').checked,
+                created_at: new Date(document.getElementById('edit_date').value).toISOString()
+            };
+            await supabaseClient.from('transactions').update(payload).eq('id', id);
+            closeEditModal();
             init();
         }
 
@@ -150,21 +213,16 @@
                 if (t.is_savings) {
                     savingsPool += (isInc ? amt : -amt);
                 } else {
-                    // Logic for Timeline & Sankey (Pure Liquid)
                     isInc ? runningBal += amt : runningBal -= amt;
-                    
-                    if (isFuture) { futureTotal += amt; } 
+                    if (isFuture) { futureTotal += (isInc ? amt : -amt); } 
                     else { isInc ? netToday += amt : netToday -= amt; }
-
-                    if (isInc) {
-                        totalLiquidIncome += amt;
-                    } else {
-                        sankeyRows.push(['Active Income', label, amt]);
-                    }
+                    
+                    if (isInc) totalLiquidIncome += amt;
+                    else sankeyRows.push(['Active Income', label, amt]);
+                    
                     timeline.push({ x: tDate.toLocaleDateString(), y: runningBal, isFuture });
                 }
 
-                // Table Logic (Shows everything)
                 historyBody.insertAdjacentHTML('afterbegin', `
                     <tr class="${isFuture ? 'future-row' : ''} ${t.is_savings ? 'savings-row' : ''}">
                         <td class="px-6 py-4 text-[10px] font-bold text-slate-400">
@@ -180,15 +238,15 @@
                             ${isInc ? '+' : '-'}$${amt.toLocaleString()}
                         </td>
                         <td class="px-6 py-4 text-center">
-                            <div class="flex justify-center gap-2">
-                                ${isFuture ? `<button onclick="confirmTransaction('${t.id}')" class="bg-indigo-600 text-white text-[10px] px-2 py-1 rounded-md font-bold">CONFIRM</button>` : ''}
+                            <div class="flex justify-center gap-3">
+                                ${isFuture ? `<button onclick="confirmTransaction('${t.id}')" class="text-indigo-600 font-black text-[10px] bg-indigo-50 px-2 py-1 rounded-md hover:bg-indigo-600 hover:text-white transition">CONFIRM</button>` : ''}
+                                <button onclick="openEditModal('${t.id}')" class="text-slate-400 hover:text-slate-800 text-xs font-bold">EDIT</button>
                                 <button onclick="deleteTransaction('${t.id}')" class="text-slate-300 hover:text-rose-500 text-lg">×</button>
                             </div>
                         </td>
                     </tr>`);
             });
 
-            // Sankey Remaining
             const liquidSpent = sankeyRows.reduce((a, b) => a + b[2], 0);
             if (totalLiquidIncome > liquidSpent) sankeyRows.push(['Active Income', 'Net Remaining', totalLiquidIncome - liquidSpent]);
 
@@ -199,16 +257,6 @@
 
             updateLineChart(timeline);
             drawSankey(sankeyRows);
-        }
-
-        function drawSankey(rows) {
-            if (rows.length === 0) return;
-            const data = new google.visualization.DataTable();
-            data.addColumn('string', 'From'); data.addColumn('string', 'To'); data.addColumn('number', 'Amount');
-            data.addRows(rows);
-            new google.visualization.Sankey(document.getElementById('sankey_chart')).draw(data, {
-                sankey: { node: { colors: ['#1e293b', '#6366f1', '#10b981', '#f59e0b', '#ef4444'], label: { fontSize: 10, bold: true } } }
-            });
         }
 
         function updateLineChart(timeline) {
@@ -231,7 +279,23 @@
             });
         }
 
-        async function deleteTransaction(id) { if (confirm("Delete?")) { await supabaseClient.from('transactions').delete().eq('id', id); init(); } }
+        function drawSankey(rows) {
+            if (rows.length === 0) return;
+            const data = new google.visualization.DataTable();
+            data.addColumn('string', 'From'); data.addColumn('string', 'To'); data.addColumn('number', 'Amount');
+            data.addRows(rows);
+            new google.visualization.Sankey(document.getElementById('sankey_chart')).draw(data, {
+                sankey: { node: { colors: ['#1e293b', '#6366f1', '#10b981', '#f59e0b', '#ef4444'], label: { fontSize: 10, bold: true } } }
+            });
+        }
+
+        function resetForm() {
+            document.getElementById('desc').value = '';
+            document.getElementById('amount').value = '';
+            document.getElementById('is_savings').checked = false;
+        }
+
+        async function deleteTransaction(id) { if (confirm("Delete this entry?")) { await supabaseClient.from('transactions').delete().eq('id', id); init(); } }
         google.charts.setOnLoadCallback(init);
     </script>
 </body>
