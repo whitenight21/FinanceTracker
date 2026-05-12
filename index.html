@@ -7,24 +7,26 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <title>Finance Tracker Pro</title>
+    <style>
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow: hidden; }
+    </style>
 </head>
 <body class="bg-gray-50 p-4 md:p-8">
     <div class="max-w-6xl mx-auto">
         <header class="flex justify-between items-center mb-8">
             <h1 class="text-3xl font-bold text-gray-800 tracking-tight">Finance Tracker</h1>
-            <div class="flex gap-2">
-                <span class="bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full border border-green-200">DB Connected</span>
-            </div>
+            <span class="bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full">v3.0 Edit Enabled</span>
         </header>
 
         <!-- Stats Grid -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <p class="text-sm text-gray-500 font-medium">Actual Net (Disposable)</p>
+                <p class="text-sm text-gray-500 font-medium">Actual Net</p>
                 <h2 id="net-income" class="text-3xl font-bold text-green-600">$0.00</h2>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <p class="text-sm text-gray-500 font-medium">Savings Pool (Off-Net)</p>
+                <p class="text-sm text-gray-500 font-medium">Savings Pool</p>
                 <h2 id="total-savings" class="text-2xl font-bold text-blue-600">$0.00</h2>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -39,7 +41,8 @@
                 <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
                     <h3 class="font-bold text-lg mb-4 text-gray-700">Add Transaction</h3>
                     <div class="space-y-4">
-                        <input id="desc" type="text" placeholder="Description (e.g. Salary, Rent)" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input id="date" type="date" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input id="desc" type="text" placeholder="Description" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
                         <input id="amount" type="number" placeholder="Amount" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
                         <select id="type" class="w-full border p-3 rounded-lg bg-white">
                             <option value="income">Income (+)</option>
@@ -48,14 +51,8 @@
                         <select id="label_select" class="w-full border p-3 rounded-lg bg-white"></select>
                         
                         <div class="space-y-2 bg-gray-50 p-3 rounded-lg">
-                            <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
-                                <input id="is_savings" type="checkbox" class="w-4 h-4 rounded text-blue-600"> 
-                                <span class="text-gray-700">Add to Savings (Exclude from Net Graph)</span>
-                            </label>
-                            <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
-                                <input id="is_recurring" type="checkbox" class="w-4 h-4 rounded text-purple-600"> 
-                                <span class="text-gray-700">Recurring Monthly</span>
-                            </label>
+                            <label class="flex items-center gap-2 text-sm cursor-pointer"><input id="is_savings" type="checkbox"> <span>Savings</span></label>
+                            <label class="flex items-center gap-2 text-sm cursor-pointer"><input id="is_recurring" type="checkbox"> <span>Recurring</span></label>
                         </div>
                         <button onclick="addTransaction()" class="w-full bg-black text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition">Save Entry</button>
                     </div>
@@ -65,34 +62,54 @@
             <!-- Right: Charts -->
             <div class="lg:col-span-2 space-y-6">
                 <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
-                    <h3 class="font-bold text-lg mb-4 text-gray-700">Net Cash Flow Timeline</h3>
+                    <h3 class="font-bold text-lg mb-4 text-gray-700">Cash Flow Timeline</h3>
                     <div class="h-64"><canvas id="lineChart"></canvas></div>
-                </div>
-                <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
-                    <h3 class="font-bold text-lg mb-4 text-gray-700">Spending by Category</h3>
-                    <div class="h-64"><canvas id="doughnutChart"></canvas></div>
                 </div>
             </div>
         </div>
 
-        <!-- Bottom: History Table -->
+        <!-- History Table -->
         <div class="mt-8 bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
-            <div class="p-6 border-b border-gray-100">
-                <h3 class="font-bold text-lg text-gray-700">Transaction History</h3>
-            </div>
+            <div class="p-6 border-b border-gray-100"><h3 class="font-bold text-lg">Transaction History</h3></div>
             <div class="overflow-x-auto">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-50 text-gray-500 text-xs font-bold uppercase">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-50 text-gray-500 font-bold uppercase">
                         <tr>
                             <th class="px-6 py-4">Date</th>
                             <th class="px-6 py-4">Description</th>
-                            <th class="px-6 py-4">Label</th>
                             <th class="px-6 py-4 text-right">Amount</th>
-                            <th class="px-6 py-4 text-center">Delete</th>
+                            <th class="px-6 py-4 text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="history-body" class="divide-y divide-gray-100"></tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT MODAL -->
+    <div id="editModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded-2xl shadow-lg z-50 overflow-y-auto p-6">
+            <h3 class="text-xl font-bold mb-4">Edit Transaction</h3>
+            <div class="space-y-4">
+                <input id="edit_id" type="hidden">
+                <input id="edit_date" type="date" class="w-full border p-3 rounded-lg">
+                <input id="edit_desc" type="text" class="w-full border p-3 rounded-lg">
+                <input id="edit_amount" type="number" class="w-full border p-3 rounded-lg">
+                <select id="edit_type" class="w-full border p-3 rounded-lg">
+                    <option value="income">Income</option>
+                    <option value="expense">Expense</option>
+                </select>
+                <select id="edit_label" class="w-full border p-3 rounded-lg"></select>
+                <div class="flex gap-4">
+                    <label class="flex items-center gap-2 text-sm"><input id="edit_savings" type="checkbox"> Savings</label>
+                    <label class="flex items-center gap-2 text-sm"><input id="edit_recurring" type="checkbox"> Recurring</label>
+                </div>
+                <div class="flex justify-end gap-2 pt-4">
+                    <button onclick="toggleModal()" class="px-4 py-2 bg-gray-200 rounded-lg">Cancel</button>
+                    <button onclick="updateTransaction()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Update</button>
+                </div>
             </div>
         </div>
     </div>
@@ -102,7 +119,10 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZndnBweHJ2aGV1a2tobmh5ZmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1OTUyNDgsImV4cCI6MjA5NDE3MTI0OH0.d4gsgx9bp79pVUw6yp65yyfpBWBmq-w_RICsJ6-S-Tw';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-        let doughnutChart, lineChart;
+        let lineChart, cachedLabels = [];
+
+        // Set default date to today
+        document.getElementById('date').valueAsDate = new Date();
 
         async function init() {
             await loadLabels();
@@ -111,54 +131,73 @@
 
         async function loadLabels() {
             const { data: labels } = await supabaseClient.from('labels').select('*').order('name');
-            const select = document.getElementById('label_select');
-            select.innerHTML = labels.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+            cachedLabels = labels;
+            const options = labels.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+            document.getElementById('label_select').innerHTML = options;
+            document.getElementById('edit_label').innerHTML = options;
         }
 
         async function addTransaction() {
-            const description = document.getElementById('desc').value;
-            const amount = parseFloat(document.getElementById('amount').value);
-            const type = document.getElementById('type').value;
-            const label_id = document.getElementById('label_select').value;
-            const is_savings = document.getElementById('is_savings').checked;
-            const is_recurring = document.getElementById('is_recurring').checked;
+            const dateVal = document.getElementById('date').value;
+            const payload = {
+                description: document.getElementById('desc').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                type: document.getElementById('type').value,
+                label_id: document.getElementById('label_select').value,
+                is_savings: document.getElementById('is_savings').checked,
+                is_recurring: document.getElementById('is_recurring').checked,
+                created_at: dateVal ? new Date(dateVal).toISOString() : new Date().toISOString()
+            };
 
-            if (!amount || !label_id) return alert("Please fill in Amount and Label");
+            const { error } = await supabaseClient.from('transactions').insert([payload]);
+            if (error) alert(error.message); else init();
+        }
 
-            const { error } = await supabaseClient.from('transactions').insert([{ 
-                description, amount, type, label_id, is_savings, is_recurring 
-            }]);
+        function toggleModal() {
+            const modal = document.getElementById('editModal');
+            modal.classList.toggle('opacity-0');
+            modal.classList.toggle('pointer-events-none');
+            document.body.classList.toggle('modal-active');
+        }
 
-            if (error) alert(error.message);
-            else {
-                document.getElementById('desc').value = '';
-                document.getElementById('amount').value = '';
-                init();
-            }
+        async function openEdit(id) {
+            const { data: t } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
+            document.getElementById('edit_id').value = t.id;
+            document.getElementById('edit_date').value = t.created_at.split('T')[0];
+            document.getElementById('edit_desc').value = t.description;
+            document.getElementById('edit_amount').value = t.amount;
+            document.getElementById('edit_type').value = t.type;
+            document.getElementById('edit_label').value = t.label_id;
+            document.getElementById('edit_savings').checked = t.is_savings;
+            document.getElementById('edit_recurring').checked = t.is_recurring;
+            toggleModal();
+        }
+
+        async function updateTransaction() {
+            const id = document.getElementById('edit_id').value;
+            const payload = {
+                created_at: new Date(document.getElementById('edit_date').value).toISOString(),
+                description: document.getElementById('edit_desc').value,
+                amount: parseFloat(document.getElementById('edit_amount').value),
+                type: document.getElementById('edit_type').value,
+                label_id: document.getElementById('edit_label').value,
+                is_savings: document.getElementById('edit_savings').checked,
+                is_recurring: document.getElementById('edit_recurring').checked
+            };
+
+            const { error } = await supabaseClient.from('transactions').update(payload).eq('id', id);
+            if (error) alert(error.message); else { toggleModal(); init(); }
         }
 
         async function deleteTransaction(id) {
-            if (!confirm("Remove this entry?")) return;
-            const { error } = await supabaseClient.from('transactions').delete().eq('id', id);
-            if (error) alert(error.message);
-            else init();
+            if (confirm("Delete?")) { await supabaseClient.from('transactions').delete().eq('id', id); init(); }
         }
 
         async function calculateStats() {
-            const { data: transactions, error } = await supabaseClient
-                .from('transactions')
-                .select('*, labels(*)')
-                .order('created_at', { ascending: true });
-
-            if (error) return console.error(error);
-
-            let net = 0;
-            let savingsPool = 0;
-            let monthlyRecurring = 0;
-            let runningBalance = 0;
+            const { data: transactions } = await supabaseClient.from('transactions').select('*, labels(*)').order('created_at', { ascending: true });
             
-            const doughnutData = {};
-            const timelineData = [];
+            let net = 0, savings = 0, recurringTotal = 0, runningBalance = 0;
+            const timeline = [];
             const historyBody = document.getElementById('history-body');
             historyBody.innerHTML = '';
 
@@ -167,84 +206,53 @@
                 const isInc = t.type === 'income';
 
                 if (t.is_savings) {
-                    savingsPool += val;
+                    savings += val;
                 } else {
-                    if (isInc) {
-                        net += val;
-                        runningBalance += val;
-                    } else {
-                        net -= val;
-                        runningBalance -= val;
-                        const labelName = t.labels?.name || 'Unlabeled';
-                        doughnutData[labelName] = (doughnutData[labelName] || 0) + val;
-                    }
-                    timelineData.push({
-                        x: new Date(t.created_at).toLocaleDateString(),
-                        y: runningBalance,
-                        type: t.type
-                    });
+                    isInc ? (net += val, runningBalance += val) : (net -= val, runningBalance -= val);
+                    timeline.push({ x: new Date(t.created_at).toLocaleDateString(), y: runningBalance, type: t.type });
                 }
-                
-                if (t.is_recurring) {
-                    isInc ? monthlyRecurring += val : monthlyRecurring -= val;
-                }
+                if (t.is_recurring) isInc ? recurringTotal += val : recurringTotal -= val;
             });
 
-            // Populate table latest first
             transactions.slice().reverse().forEach(t => {
-                const val = parseFloat(t.amount);
                 const isInc = t.type === 'income';
                 historyBody.innerHTML += `
                     <tr class="hover:bg-gray-50 transition">
-                        <td class="px-6 py-4 text-sm text-gray-500">${new Date(t.created_at).toLocaleDateString()}</td>
-                        <td class="px-6 py-4 font-medium text-gray-800">${t.description} ${t.is_savings ? '<span class="text-blue-400 text-[9px] border border-blue-200 px-1 rounded ml-1 font-bold">SAVINGS</span>' : ''}</td>
-                        <td class="px-6 py-4"><span class="px-2 py-1 bg-gray-100 rounded text-xs text-gray-600">${t.labels?.name || 'Unlabeled'}</span></td>
-                        <td class="px-6 py-4 text-right font-bold ${isInc ? 'text-green-600' : 'text-red-600'}">${isInc ? '+' : '-'}$${val.toLocaleString()}</td>
-                        <td class="px-6 py-4 text-center"><button onclick="deleteTransaction('${t.id}')" class="text-gray-300 hover:text-red-500 font-bold transition">Delete</button></td>
+                        <td class="px-6 py-4 font-mono text-xs">${new Date(t.created_at).toLocaleDateString()}</td>
+                        <td class="px-6 py-4 font-medium">${t.description} ${t.is_savings ? '<span class="text-blue-500 text-[9px] font-bold">SAVINGS</span>':''}</td>
+                        <td class="px-6 py-4 text-right font-bold ${isInc ? 'text-green-600' : 'text-red-600'}">${isInc ? '+' : '-'}$${t.amount.toLocaleString()}</td>
+                        <td class="px-6 py-4 text-center flex justify-center gap-3">
+                            <button onclick="openEdit('${t.id}')" class="text-indigo-600 hover:underline">Edit</button>
+                            <button onclick="deleteTransaction('${t.id}')" class="text-red-400 hover:text-red-600">×</button>
+                        </td>
                     </tr>`;
             });
 
             document.getElementById('net-income').innerText = `$${net.toLocaleString()}`;
-            document.getElementById('total-savings').innerText = `$${savingsPool.toLocaleString()}`;
-            document.getElementById('prognosis').innerText = `$${(net + (monthlyRecurring * 11)).toLocaleString()}`;
+            document.getElementById('total-savings').innerText = `$${savings.toLocaleString()}`;
+            document.getElementById('prognosis').innerText = `$${(net + (recurringTotal * 11)).toLocaleString()}`;
 
-            updateCharts(doughnutData, timelineData);
+            updateLineChart(timeline);
         }
 
-        function updateCharts(doughnutData, timelineData) {
-            if (doughnutChart) doughnutChart.destroy();
-            doughnutChart = new Chart(document.getElementById('doughnutChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: Object.keys(doughnutData),
-                    datasets: [{ data: Object.values(doughnutData), backgroundColor: ['#6366f1','#f59e0b','#ef4444','#10b981','#8b5cf6'], borderWidth: 0 }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-            });
-
+        function updateLineChart(timeline) {
             if (lineChart) lineChart.destroy();
             lineChart = new Chart(document.getElementById('lineChart'), {
                 type: 'line',
                 data: {
-                    labels: timelineData.map(d => d.x),
+                    labels: timeline.map(d => d.x),
                     datasets: [{
-                        label: 'Running Net Balance',
-                        data: timelineData.map(d => d.y),
+                        label: 'Net Balance',
+                        data: timeline.map(d => d.y),
                         borderColor: '#cbd5e1',
-                        borderWidth: 2,
-                        pointBackgroundColor: timelineData.map(d => d.type === 'income' ? '#10b981' : '#ef4444'),
-                        pointBorderColor: '#fff',
+                        pointBackgroundColor: timeline.map(d => d.type === 'income' ? '#10b981' : '#ef4444'),
                         pointRadius: 5,
                         fill: true,
                         backgroundColor: 'rgba(99, 102, 241, 0.05)',
                         tension: 0.2
                     }]
                 },
-                options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false,
-                    scales: { y: { ticks: { callback: v => '$' + v.toLocaleString() } } }
-                }
+                options: { responsive: true, maintainAspectRatio: false }
             });
         }
 
