@@ -6,23 +6,26 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <title>Finance Tracker Pro</title>
+    <!-- Load Google Charts for Sankey -->
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <title>Finance Tracker Pro + Sankey</title>
     <style>
         .modal { transition: opacity 0.25s ease; }
         body.modal-active { overflow: hidden; }
+        #sankey_chart text { font-family: 'Inter', sans-serif !important; font-size: 12px !important; }
     </style>
 </head>
 <body class="bg-gray-50 p-4 md:p-8">
     <div class="max-w-6xl mx-auto">
         <header class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800 tracking-tight">Finance Tracker</h1>
-            <span class="bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full">v3.0 Edit Enabled</span>
+            <h1 class="text-3xl font-bold text-gray-800 tracking-tight text-indigo-600">Finance Tracker</h1>
+            <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full">v4.0 Sankey Visualizer</span>
         </header>
 
         <!-- Stats Grid -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <p class="text-sm text-gray-500 font-medium">Actual Net</p>
+                <p class="text-sm text-gray-500 font-medium">Disposable Net</p>
                 <h2 id="net-income" class="text-3xl font-bold text-green-600">$0.00</h2>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -35,11 +38,11 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
             <!-- Left: Entry Form -->
             <div class="lg:col-span-1 space-y-6">
                 <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
-                    <h3 class="font-bold text-lg mb-4 text-gray-700">Add Transaction</h3>
+                    <h3 class="font-bold text-lg mb-4 text-gray-700 border-b pb-2">New Entry</h3>
                     <div class="space-y-4">
                         <input id="date" type="date" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
                         <input id="desc" type="text" placeholder="Description" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
@@ -51,26 +54,35 @@
                         <select id="label_select" class="w-full border p-3 rounded-lg bg-white"></select>
                         
                         <div class="space-y-2 bg-gray-50 p-3 rounded-lg">
-                            <label class="flex items-center gap-2 text-sm cursor-pointer"><input id="is_savings" type="checkbox"> <span>Savings</span></label>
-                            <label class="flex items-center gap-2 text-sm cursor-pointer"><input id="is_recurring" type="checkbox"> <span>Recurring</span></label>
+                            <label class="flex items-center gap-2 text-sm cursor-pointer font-medium text-gray-600"><input id="is_savings" type="checkbox"> <span>Send to Savings</span></label>
+                            <label class="flex items-center gap-2 text-sm cursor-pointer font-medium text-gray-600"><input id="is_recurring" type="checkbox"> <span>Recurring Monthly</span></label>
                         </div>
-                        <button onclick="addTransaction()" class="w-full bg-black text-white font-bold py-3 rounded-lg hover:bg-gray-800 transition">Save Entry</button>
+                        <button onclick="addTransaction()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition shadow-lg shadow-indigo-100">Save Entry</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Right: Charts -->
-            <div class="lg:col-span-2 space-y-6">
-                <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
+            <!-- Right: Line Chart -->
+            <div class="lg:col-span-2">
+                <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 h-full">
                     <h3 class="font-bold text-lg mb-4 text-gray-700">Cash Flow Timeline</h3>
-                    <div class="h-64"><canvas id="lineChart"></canvas></div>
+                    <div class="h-80"><canvas id="lineChart"></canvas></div>
                 </div>
             </div>
         </div>
 
+        <!-- SANKEY DIAGRAM -->
+        <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 mb-8 overflow-hidden">
+            <h3 class="font-bold text-lg mb-4 text-gray-700">Cash Distribution (Sankey)</h3>
+            <div id="sankey_chart" style="height: 350px; width: 100%;"></div>
+            <p id="sankey_placeholder" class="text-center text-gray-400 py-20 hidden">Add income and expenses to see the flow.</p>
+        </div>
+
         <!-- History Table -->
-        <div class="mt-8 bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
-            <div class="p-6 border-b border-gray-100"><h3 class="font-bold text-lg">Transaction History</h3></div>
+        <div class="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="font-bold text-lg text-gray-700">Recent Transactions</h3>
+            </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
                     <thead class="bg-gray-50 text-gray-500 font-bold uppercase">
@@ -87,29 +99,18 @@
         </div>
     </div>
 
-    <!-- EDIT MODAL -->
+    <!-- Edit Modal (same as before) -->
     <div id="editModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded-2xl shadow-lg z-50 overflow-y-auto p-6">
-            <h3 class="text-xl font-bold mb-4">Edit Transaction</h3>
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal()"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded-2xl shadow-lg z-50 p-6">
+            <h3 class="text-xl font-bold mb-4">Edit Entry</h3>
             <div class="space-y-4">
                 <input id="edit_id" type="hidden">
-                <input id="edit_date" type="date" class="w-full border p-3 rounded-lg">
-                <input id="edit_desc" type="text" class="w-full border p-3 rounded-lg">
-                <input id="edit_amount" type="number" class="w-full border p-3 rounded-lg">
-                <select id="edit_type" class="w-full border p-3 rounded-lg">
-                    <option value="income">Income</option>
-                    <option value="expense">Expense</option>
-                </select>
+                <input id="edit_date" type="date" class="w-full border p-3 rounded-lg"><input id="edit_desc" type="text" class="w-full border p-3 rounded-lg">
+                <input id="edit_amount" type="number" class="w-full border p-3 rounded-lg"><select id="edit_type" class="w-full border p-3 rounded-lg"><option value="income">Income</option><option value="expense">Expense</option></select>
                 <select id="edit_label" class="w-full border p-3 rounded-lg"></select>
-                <div class="flex gap-4">
-                    <label class="flex items-center gap-2 text-sm"><input id="edit_savings" type="checkbox"> Savings</label>
-                    <label class="flex items-center gap-2 text-sm"><input id="edit_recurring" type="checkbox"> Recurring</label>
-                </div>
-                <div class="flex justify-end gap-2 pt-4">
-                    <button onclick="toggleModal()" class="px-4 py-2 bg-gray-200 rounded-lg">Cancel</button>
-                    <button onclick="updateTransaction()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Update</button>
-                </div>
+                <div class="flex gap-4"><label class="flex items-center gap-2"><input id="edit_savings" type="checkbox"> Savings</label><label class="flex items-center gap-2"><input id="edit_recurring" type="checkbox"> Recurring</label></div>
+                <div class="flex justify-end gap-2 pt-4"><button onclick="toggleModal()" class="px-4 py-2 bg-gray-100 rounded-lg">Cancel</button><button onclick="updateTransaction()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Update</button></div>
             </div>
         </div>
     </div>
@@ -119,9 +120,8 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZndnBweHJ2aGV1a2tobmh5ZmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1OTUyNDgsImV4cCI6MjA5NDE3MTI0OH0.d4gsgx9bp79pVUw6yp65yyfpBWBmq-w_RICsJ6-S-Tw';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-        let lineChart, cachedLabels = [];
-
-        // Set default date to today
+        let lineChart;
+        google.charts.load('current', {'packages':['sankey']});
         document.getElementById('date').valueAsDate = new Date();
 
         async function init() {
@@ -131,7 +131,6 @@
 
         async function loadLabels() {
             const { data: labels } = await supabaseClient.from('labels').select('*').order('name');
-            cachedLabels = labels;
             const options = labels.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
             document.getElementById('label_select').innerHTML = options;
             document.getElementById('edit_label').innerHTML = options;
@@ -148,16 +147,120 @@
                 is_recurring: document.getElementById('is_recurring').checked,
                 created_at: dateVal ? new Date(dateVal).toISOString() : new Date().toISOString()
             };
-
             const { error } = await supabaseClient.from('transactions').insert([payload]);
-            if (error) alert(error.message); else init();
+            if (!error) { document.getElementById('desc').value = ''; document.getElementById('amount').value = ''; init(); }
         }
 
-        function toggleModal() {
-            const modal = document.getElementById('editModal');
-            modal.classList.toggle('opacity-0');
-            modal.classList.toggle('pointer-events-none');
-            document.body.classList.toggle('modal-active');
+        async function calculateStats() {
+            const { data: transactions } = await supabaseClient.from('transactions').select('*, labels(*)').order('created_at', { ascending: true });
+            
+            let net = 0, savings = 0, recurringTotal = 0, runningBalance = 0;
+            const timeline = [];
+            const sankeyRows = [];
+            const historyBody = document.getElementById('history-body');
+            historyBody.innerHTML = '';
+
+            let totalIncome = 0;
+
+            transactions.forEach(t => {
+                const val = parseFloat(t.amount);
+                const isInc = t.type === 'income';
+                const labelName = t.labels?.name || 'Unlabeled';
+
+                if (isInc) {
+                    totalIncome += val;
+                }
+
+                if (t.is_savings) {
+                    savings += val;
+                    sankeyRows.push(['Total Income', 'Savings', val]);
+                } else {
+                    if (isInc) {
+                        net += val;
+                        runningBalance += val;
+                    } else {
+                        net -= val;
+                        runningBalance -= val;
+                        sankeyRows.push(['Total Income', labelName, val]);
+                    }
+                    timeline.push({ x: new Date(t.created_at).toLocaleDateString(), y: runningBalance, type: t.type });
+                }
+                if (t.is_recurring) isInc ? recurringTotal += val : recurringTotal -= val;
+            });
+
+            // Calculate "Remaining Net" flow for Sankey
+            const spentAndSaved = sankeyRows.reduce((acc, curr) => acc + curr[2], 0);
+            const remaining = totalIncome - spentAndSaved;
+            if (remaining > 0) sankeyRows.push(['Total Income', 'Remaining Net', remaining]);
+
+            transactions.slice().reverse().forEach(t => {
+                const isInc = t.type === 'income';
+                historyBody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition border-b">
+                        <td class="px-6 py-4 font-mono text-xs">${new Date(t.created_at).toLocaleDateString()}</td>
+                        <td class="px-6 py-4 font-medium">${t.description} ${t.is_savings ? '<span class="text-blue-500 text-[9px] font-bold">[SAVINGS]</span>':''}</td>
+                        <td class="px-6 py-4 text-right font-bold ${isInc ? 'text-green-600' : 'text-red-600'}">${isInc ? '+' : '-'}$${t.amount.toLocaleString()}</td>
+                        <td class="px-6 py-4 text-center">
+                            <button onclick="openEdit('${t.id}')" class="text-indigo-600 hover:underline mr-3">Edit</button>
+                            <button onclick="deleteTransaction('${t.id}')" class="text-red-400">×</button>
+                        </td>
+                    </tr>`;
+            });
+
+            document.getElementById('net-income').innerText = `$${net.toLocaleString()}`;
+            document.getElementById('total-savings').innerText = `$${savings.toLocaleString()}`;
+            document.getElementById('prognosis').innerText = `$${(net + (recurringTotal * 11)).toLocaleString()}`;
+
+            updateLineChart(timeline);
+            drawSankey(sankeyRows);
+        }
+
+        function drawSankey(rows) {
+            if (rows.length === 0) {
+                document.getElementById('sankey_placeholder').classList.remove('hidden');
+                document.getElementById('sankey_chart').classList.add('hidden');
+                return;
+            }
+            document.getElementById('sankey_placeholder').classList.add('hidden');
+            document.getElementById('sankey_chart').classList.remove('hidden');
+
+            const data = new google.visualization.DataTable();
+            data.addColumn('string', 'From');
+            data.addColumn('string', 'To');
+            data.addColumn('number', 'Weight');
+            data.addRows(rows);
+
+            const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+            const options = {
+                sankey: {
+                    node: { colors: colors, label: { fontSize: 12, bold: true } },
+                    link: { colorMode: 'gradient', colors: colors }
+                }
+            };
+
+            const chart = new google.visualization.Sankey(document.getElementById('sankey_chart'));
+            chart.draw(data, options);
+        }
+
+        function updateLineChart(timeline) {
+            if (lineChart) lineChart.destroy();
+            lineChart = new Chart(document.getElementById('lineChart'), {
+                type: 'line',
+                data: {
+                    labels: timeline.map(d => d.x),
+                    datasets: [{
+                        label: 'Net Balance',
+                        data: timeline.map(d => d.y),
+                        borderColor: '#6366f1',
+                        pointBackgroundColor: timeline.map(d => d.type === 'income' ? '#10b981' : '#ef4444'),
+                        pointRadius: 4,
+                        fill: true,
+                        backgroundColor: 'rgba(99, 102, 241, 0.05)',
+                        tension: 0.3
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
         }
 
         async function openEdit(id) {
@@ -184,79 +287,19 @@
                 is_savings: document.getElementById('edit_savings').checked,
                 is_recurring: document.getElementById('edit_recurring').checked
             };
-
             const { error } = await supabaseClient.from('transactions').update(payload).eq('id', id);
-            if (error) alert(error.message); else { toggleModal(); init(); }
+            if (!error) { toggleModal(); init(); }
         }
 
-        async function deleteTransaction(id) {
-            if (confirm("Delete?")) { await supabaseClient.from('transactions').delete().eq('id', id); init(); }
+        async function deleteTransaction(id) { if (confirm("Delete?")) { await supabaseClient.from('transactions').delete().eq('id', id); init(); } }
+        function toggleModal() {
+            const modal = document.getElementById('editModal');
+            modal.classList.toggle('opacity-0');
+            modal.classList.toggle('pointer-events-none');
+            document.body.classList.toggle('modal-active');
         }
 
-        async function calculateStats() {
-            const { data: transactions } = await supabaseClient.from('transactions').select('*, labels(*)').order('created_at', { ascending: true });
-            
-            let net = 0, savings = 0, recurringTotal = 0, runningBalance = 0;
-            const timeline = [];
-            const historyBody = document.getElementById('history-body');
-            historyBody.innerHTML = '';
-
-            transactions.forEach(t => {
-                const val = parseFloat(t.amount);
-                const isInc = t.type === 'income';
-
-                if (t.is_savings) {
-                    savings += val;
-                } else {
-                    isInc ? (net += val, runningBalance += val) : (net -= val, runningBalance -= val);
-                    timeline.push({ x: new Date(t.created_at).toLocaleDateString(), y: runningBalance, type: t.type });
-                }
-                if (t.is_recurring) isInc ? recurringTotal += val : recurringTotal -= val;
-            });
-
-            transactions.slice().reverse().forEach(t => {
-                const isInc = t.type === 'income';
-                historyBody.innerHTML += `
-                    <tr class="hover:bg-gray-50 transition">
-                        <td class="px-6 py-4 font-mono text-xs">${new Date(t.created_at).toLocaleDateString()}</td>
-                        <td class="px-6 py-4 font-medium">${t.description} ${t.is_savings ? '<span class="text-blue-500 text-[9px] font-bold">SAVINGS</span>':''}</td>
-                        <td class="px-6 py-4 text-right font-bold ${isInc ? 'text-green-600' : 'text-red-600'}">${isInc ? '+' : '-'}$${t.amount.toLocaleString()}</td>
-                        <td class="px-6 py-4 text-center flex justify-center gap-3">
-                            <button onclick="openEdit('${t.id}')" class="text-indigo-600 hover:underline">Edit</button>
-                            <button onclick="deleteTransaction('${t.id}')" class="text-red-400 hover:text-red-600">×</button>
-                        </td>
-                    </tr>`;
-            });
-
-            document.getElementById('net-income').innerText = `$${net.toLocaleString()}`;
-            document.getElementById('total-savings').innerText = `$${savings.toLocaleString()}`;
-            document.getElementById('prognosis').innerText = `$${(net + (recurringTotal * 11)).toLocaleString()}`;
-
-            updateLineChart(timeline);
-        }
-
-        function updateLineChart(timeline) {
-            if (lineChart) lineChart.destroy();
-            lineChart = new Chart(document.getElementById('lineChart'), {
-                type: 'line',
-                data: {
-                    labels: timeline.map(d => d.x),
-                    datasets: [{
-                        label: 'Net Balance',
-                        data: timeline.map(d => d.y),
-                        borderColor: '#cbd5e1',
-                        pointBackgroundColor: timeline.map(d => d.type === 'income' ? '#10b981' : '#ef4444'),
-                        pointRadius: 5,
-                        fill: true,
-                        backgroundColor: 'rgba(99, 102, 241, 0.05)',
-                        tension: 0.2
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        }
-
-        init();
+        google.charts.setOnLoadCallback(init);
     </script>
 </body>
 </html>
