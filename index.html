@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <title>FinanceFlow v6.5</title>
+    <title>FinanceFlow v6.8</title>
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
         .savings-row { background-color: rgba(240, 249, 255, 0.4); }
@@ -27,11 +27,10 @@
             </div>
         </header>
 
-        <!-- Stats Grid -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
             <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
                 <p class="text-[9px] font-black text-emerald-600 uppercase mb-1">Liquid Net (Now)</p>
-                <h2 id="net-today" class="text-lg md:text-2xl font-black text-emerald-800">$0</h2>
+                <h2 id="net-today" class="text-lg md:text-2xl font-black text-emerald-600">$0</h2>
             </div>
             <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
                 <p class="text-[9px] font-black text-sky-600 uppercase mb-1">Savings</p>
@@ -48,7 +47,6 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Sidebar: Input -->
             <div class="lg:col-span-1">
                 <div class="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 sticky top-8">
                     <h3 class="font-bold text-lg mb-6 text-slate-800">New Entry</h3>
@@ -72,20 +70,17 @@
                 </div>
             </div>
 
-            <!-- Content Area -->
             <div class="lg:col-span-2 space-y-8">
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
                     <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase tracking-widest">Liquid Balance Trend</h3>
                     <div class="h-64"><canvas id="lineChart"></canvas></div>
                 </div>
 
-                <!-- Sankey moved above History -->
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase tracking-widest">Flow Distribution</h3>
+                    <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase tracking-widest">Flow Distribution (Confirmed Only)</h3>
                     <div id="sankey_chart" style="height: 300px;"></div>
                 </div>
                 
-                <!-- History Table -->
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-5 border-b border-slate-50">
                         <h3 class="font-bold text-slate-800 text-sm uppercase">Transaction History</h3>
@@ -170,7 +165,6 @@
         }
 
         async function confirmTransaction(id) {
-            // Set date to 1 minute ago to ensure it is considered "Past" immediately
             const confirmedDate = new Date(Date.now() - 60000).toISOString();
             const { error } = await supabaseClient
                 .from('transactions')
@@ -217,7 +211,7 @@
             const { data: transactions } = await supabaseClient.from('transactions').select('*, labels(*)').order('created_at', { ascending: true });
             const now = new Date(); 
 
-            let netToday = 0, futureTotal = 0, savingsPool = 0, runningBal = 0, totalLiquidIncome = 0;
+            let netToday = 0, futureTotal = 0, savingsPool = 0, runningBal = 0, totalConfirmedIncome = 0;
             const timeline = [], sankeyRows = [], historyBody = document.getElementById('history-body');
             historyBody.innerHTML = '';
 
@@ -236,13 +230,13 @@
                     if (isFuture) { 
                         futureTotal += (isInc ? amt : -amt); 
                     } else { 
-                        isInc ? netToday += amt : netToday -= amt; 
+                        isInc ? netToday += amt : netToday -= amt;
+                        // Build Sankey logic only for confirmed, non-savings items
+                        if (isInc) totalConfirmedIncome += amt;
+                        else sankeyRows.push(['Active Income', label, amt]);
                     }
                     
-                    if (isInc) totalLiquidIncome += amt;
-                    else sankeyRows.push(['Active Income', label, amt]);
-                    
-                    timeline.push({ x: tDate.toLocaleDateString(), y: runningBal, isFuture });
+                    timeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningBal, isFuture });
                 }
 
                 historyBody.insertAdjacentHTML('afterbegin', `
@@ -268,8 +262,11 @@
                     </tr>`);
             });
 
-            const liquidSpent = sankeyRows.reduce((a, b) => a + b[2], 0);
-            if (totalLiquidIncome > liquidSpent) sankeyRows.push(['Active Income', 'Net Balance', totalLiquidIncome - liquidSpent]);
+            // Finalize Sankey Remainder (Net Balance)
+            const confirmedSpent = sankeyRows.reduce((a, b) => a + b[2], 0);
+            if (totalConfirmedIncome > confirmedSpent) {
+                sankeyRows.push(['Active Income', 'Current Liquid Net', totalConfirmedIncome - confirmedSpent]);
+            }
 
             document.getElementById('net-today').innerText = `$${netToday.toLocaleString()}`;
             document.getElementById('savings-pool').innerText = `$${savingsPool.toLocaleString()}`;
@@ -287,21 +284,39 @@
                 data: {
                     labels: timeline.map(d => d.x),
                     datasets: [{
-                        label: 'Projected',
+                        label: 'Running Balance',
                         data: timeline.map(d => d.y),
                         borderColor: '#6366f1',
                         borderWidth: 2,
-                        tension: 0.3,
-                        pointRadius: 0,
+                        tension: 0.1,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#6366f1',
+                        pointHoverRadius: 6,
                         segment: { borderDash: ctx => timeline[ctx.p1DataIndex]?.isFuture ? [5, 5] : undefined }
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { legend: { display: false } },
+                    scales: { 
+                        x: { 
+                            ticks: { font: { size: 9, weight: 'bold' }, color: '#94a3b8' },
+                            grid: { display: false }
+                        },
+                        y: {
+                            ticks: { font: { size: 9 } }
+                        }
+                    } 
+                }
             });
         }
 
         function drawSankey(rows) {
-            if (rows.length === 0) return;
+            if (rows.length === 0) {
+                document.getElementById('sankey_chart').innerHTML = '<div class="h-full flex items-center justify-center text-slate-300 font-bold">No confirmed flow data</div>';
+                return;
+            }
             const data = new google.visualization.DataTable();
             data.addColumn('string', 'From'); data.addColumn('string', 'To'); data.addColumn('number', 'Amount');
             data.addRows(rows);
