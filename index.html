@@ -2,25 +2,29 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <title>Finance Tracker Pro</title>
 </head>
 <body class="bg-gray-50 p-4 md:p-8">
-    <div class="max-w-5xl mx-auto">
+    <div class="max-w-6xl mx-auto">
         <header class="flex justify-between items-center mb-8">
             <h1 class="text-3xl font-bold text-gray-800">Finance Tracker</h1>
-            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Live Sync Active</span>
+            <div class="flex gap-2">
+                <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-3 py-1 rounded-full">v2.0 Live</span>
+            </div>
         </header>
 
+        <!-- Stats Grid -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <p class="text-sm text-gray-500 font-medium">Actual Net (Current)</p>
+                <p class="text-sm text-gray-500 font-medium">Actual Net (Monthly)</p>
                 <h2 id="net-income" class="text-3xl font-bold text-green-600">$0.00</h2>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <p class="text-sm text-gray-500 font-medium">Off-Net Savings</p>
+                <p class="text-sm text-gray-500 font-medium">Savings Pool</p>
                 <h2 id="total-savings" class="text-2xl font-bold text-blue-600">$0.00</h2>
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -30,55 +34,75 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left: Entry Form -->
             <div class="lg:col-span-1 space-y-6">
                 <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
-                    <h3 class="font-bold text-lg mb-4 text-gray-700">Add Transaction</h3>
+                    <h3 class="font-bold text-lg mb-4">Add Transaction</h3>
                     <div class="space-y-4">
-                        <input id="desc" type="text" placeholder="Description (e.g. Salary)" class="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                        <input id="amount" type="number" placeholder="Amount" class="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                        
+                        <input id="desc" type="text" placeholder="Description" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input id="amount" type="number" placeholder="Amount" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500">
                         <select id="type" class="w-full border p-3 rounded-lg bg-white">
-                            <option value="income">Income</option>
-                            <option value="expense">Expense</option>
+                            <option value="income">Income (+)</option>
+                            <option value="expense">Expense (-)</option>
                         </select>
-
-                        <select id="label_select" class="w-full border p-3 rounded-lg bg-white">
-                            </select>
-
-                        <div class="flex flex-col gap-2 p-2 bg-gray-50 rounded-lg">
-                            <label class="flex items-center gap-3 cursor-pointer">
-                                <input id="is_savings" type="checkbox" class="w-4 h-4 text-blue-600">
-                                <span class="text-sm text-gray-600">Add to Savings (Exclude from Net)</span>
+                        <select id="label_select" class="w-full border p-3 rounded-lg bg-white"></select>
+                        
+                        <div class="space-y-2 bg-gray-50 p-3 rounded-lg">
+                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                <input id="is_savings" type="checkbox"> Add to Savings Pool
                             </label>
-                            <label class="flex items-center gap-3 cursor-pointer">
-                                <input id="is_recurring" type="checkbox" class="w-4 h-4 text-purple-600">
-                                <span class="text-sm text-gray-600">Recurring Monthly</span>
+                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                <input id="is_recurring" type="checkbox"> Recurring Monthly
                             </label>
                         </div>
-
                         <button onclick="addTransaction()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition">Save Entry</button>
                     </div>
                 </div>
             </div>
 
-            <div class="lg:col-span-2">
-                <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 h-full">
-                    <h3 class="font-bold text-lg mb-4 text-gray-700">Spending by Label</h3>
-                    <div class="relative h-64 md:h-80">
-                        <canvas id="spendingChart"></canvas>
-                    </div>
+            <!-- Right: Charts -->
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
+                    <h3 class="font-bold text-lg mb-4">Cash Flow Timeline</h3>
+                    <div class="h-64"><canvas id="lineChart"></canvas></div>
                 </div>
+                <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
+                    <h3 class="font-bold text-lg mb-4">Expense Breakdown</h3>
+                    <div class="h-64"><canvas id="doughnutChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom: History Table -->
+        <div class="mt-8 bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-100">
+                <h3 class="font-bold text-lg">Transaction History</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead class="bg-gray-50 text-gray-600 text-sm uppercase">
+                        <tr>
+                            <th class="px-6 py-4">Date</th>
+                            <th class="px-6 py-4">Description</th>
+                            <th class="px-6 py-4">Label</th>
+                            <th class="px-6 py-4 text-right">Amount</th>
+                            <th class="px-6 py-4 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body" class="divide-y divide-gray-100">
+                        <!-- Table rows generated here -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
     <script>
-        // REPLACE THESE WITH YOUR ACTUAL SUPABASE KEYS
-        const supabaseUrl = 'https://fgvppxrvheukkhnhyfim.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZndnBweHJ2aGV1a2tobmh5ZmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1OTUyNDgsImV4cCI6MjA5NDE3MTI0OH0.d4gsgx9bp79pVUw6yp65yyfpBWBmq-w_RICsJ6-S-Tw';
+        const supabaseUrl = 'YOUR_SUPABASE_URL';
+        const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-        let myChart;
+        let doughnutChart, lineChart;
 
         async function init() {
             await loadLabels();
@@ -86,14 +110,9 @@
         }
 
         async function loadLabels() {
-            const { data: labels } = await supabaseClient.from('labels').select('*');
+            const { data: labels } = await supabaseClient.from('labels').select('*').order('name');
             const select = document.getElementById('label_select');
-            labels.forEach(label => {
-                const opt = document.createElement('option');
-                opt.value = label.id;
-                opt.textContent = label.name;
-                select.appendChild(opt);
-            });
+            select.innerHTML = labels.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
         }
 
         async function addTransaction() {
@@ -104,76 +123,106 @@
             const is_savings = document.getElementById('is_savings').checked;
             const is_recurring = document.getElementById('is_recurring').checked;
 
-            if (!amount) return alert("Enter an amount");
+            if (!amount || !label_id) return alert("Missing amount or label");
 
-            const { error } = await supabaseClient
-                .from('transactions')
-                .insert([{ description, amount, type, label_id, is_savings, is_recurring }]);
+            const { error } = await supabaseClient.from('transactions').insert([{ 
+                description, amount, type, label_id, is_savings, is_recurring 
+            }]);
 
             if (error) alert(error.message);
             else {
                 document.getElementById('desc').value = '';
                 document.getElementById('amount').value = '';
-                await calculateStats();
+                init();
             }
         }
 
+        async function deleteTransaction(id) {
+            if (!confirm("Delete this entry?")) return;
+            await supabaseClient.from('transactions').delete().eq('id', id);
+            init();
+        }
+
         async function calculateStats() {
-            // Fetch transactions and join with labels
-            const { data: transactions } = await supabaseClient
-                .from('transactions')
-                .select('*, labels(name, color)');
+            const { data: transactions } = await supabaseClient.from('transactions').select('*, labels(*)').order('created_at', { ascending: true });
 
             let net = 0, savings = 0, monthlyRecurring = 0;
-            const chartData = {};
+            const doughnutData = {};
+            const historyBody = document.getElementById('history-body');
+            historyBody.innerHTML = '';
 
-            transactions.forEach(t => {
+            // Line Chart Data
+            const timeline = transactions.map(t => ({
+                x: new Date(t.created_at).toLocaleDateString(),
+                y: t.amount,
+                type: t.type
+            }));
+
+            transactions.slice().reverse().forEach(t => {
                 const val = parseFloat(t.amount);
+                const isInc = t.type === 'income';
+
+                // Net/Savings Logic
+                if (t.is_savings) savings += val;
+                else isInc ? net += val : net -= val;
                 
-                if (t.is_savings) {
-                    savings += val;
-                } else {
-                    if (t.type === 'income') net += val;
-                    else {
-                        net -= val;
-                        // Populate chart data for expenses only
-                        const labelName = t.labels?.name || 'Unlabeled';
-                        chartData[labelName] = (chartData[labelName] || 0) + val;
-                    }
+                if (t.is_recurring) isInc ? monthlyRecurring += val : monthlyRecurring -= val;
+
+                // Doughnut Logic (Expenses Only)
+                if (!t.is_savings && !isInc) {
+                    const labelName = t.labels?.name || 'Unlabeled';
+                    doughnutData[labelName] = (doughnutData[labelName] || 0) + val;
                 }
 
-                if (t.is_recurring) {
-                    t.type === 'income' ? monthlyRecurring += val : monthlyRecurring -= val;
-                }
+                // Build Table
+                historyBody.innerHTML += `
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 text-sm text-gray-500">${new Date(t.created_at).toLocaleDateString()}</td>
+                        <td class="px-6 py-4 font-medium">${t.description}</td>
+                        <td class="px-6 py-4"><span class="px-2 py-1 bg-gray-100 rounded text-xs">${t.labels?.name || 'None'}</span></td>
+                        <td class="px-6 py-4 text-right font-bold ${isInc ? 'text-green-600' : 'text-red-600'}">${isInc ? '+' : '-'}$${val.toLocaleString()}</td>
+                        <td class="px-6 py-4 text-center"><button onclick="deleteTransaction('${t.id}')" class="text-gray-400 hover:text-red-500 text-xl">×</button></td>
+                    </tr>`;
             });
 
-            // Update UI
             document.getElementById('net-income').innerText = `$${net.toLocaleString()}`;
             document.getElementById('total-savings').innerText = `$${savings.toLocaleString()}`;
             document.getElementById('prognosis').innerText = `$${(net + (monthlyRecurring * 11)).toLocaleString()}`;
 
-            updateChart(chartData);
+            updateCharts(doughnutData, timeline);
         }
 
-        function updateChart(chartData) {
-            const ctx = document.getElementById('spendingChart').getContext('2d');
-            
-            if (myChart) myChart.destroy();
-
-            myChart = new Chart(ctx, {
+        function updateCharts(doughnutData, timeline) {
+            // Doughnut Chart
+            if (doughnutChart) doughnutChart.destroy();
+            doughnutChart = new Chart(document.getElementById('doughnutChart'), {
                 type: 'doughnut',
                 data: {
-                    labels: Object.keys(chartData),
+                    labels: Object.keys(doughnutData),
+                    datasets: [{ data: Object.values(doughnutData), backgroundColor: ['#6366f1','#f59e0b','#ef4444','#10b981','#8b5cf6'], borderWidth: 0 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Line Chart (Daily Timeline)
+            if (lineChart) lineChart.destroy();
+            lineChart = new Chart(document.getElementById('lineChart'), {
+                type: 'line',
+                data: {
+                    labels: timeline.map(d => d.x),
                     datasets: [{
-                        data: Object.values(chartData),
-                        backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'],
-                        borderWidth: 0
+                        label: 'Transaction Amount',
+                        data: timeline.map(d => d.y),
+                        borderColor: '#e5e7eb',
+                        pointBackgroundColor: timeline.map(d => d.type === 'income' ? '#10b981' : '#ef4444'),
+                        pointRadius: 6,
+                        tension: 0.3
                     }]
                 },
-                options: {
-                    responsive: true,
+                options: { 
+                    responsive: true, 
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
+                    scales: { y: { beginAtZero: true } }
                 }
             });
         }
