@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Finance Tracker Pro</title>
+</head>
+<body class="bg-gray-50 p-4 md:p-8">
+    <div class="max-w-5xl mx-auto">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Finance Tracker</h1>
+            <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">Live Sync Active</span>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 font-medium">Actual Net (Current)</p>
+                <h2 id="net-income" class="text-3xl font-bold text-green-600">$0.00</h2>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 font-medium">Off-Net Savings</p>
+                <h2 id="total-savings" class="text-2xl font-bold text-blue-600">$0.00</h2>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                <p class="text-sm text-gray-500 font-medium">1-Year Prognosis</p>
+                <h2 id="prognosis" class="text-2xl font-bold text-purple-600">$0.00</h2>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-1 space-y-6">
+                <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
+                    <h3 class="font-bold text-lg mb-4 text-gray-700">Add Transaction</h3>
+                    <div class="space-y-4">
+                        <input id="desc" type="text" placeholder="Description (e.g. Salary)" class="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        <input id="amount" type="number" placeholder="Amount" class="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        
+                        <select id="type" class="w-full border p-3 rounded-lg bg-white">
+                            <option value="income">Income</option>
+                            <option value="expense">Expense</option>
+                        </select>
+
+                        <select id="label_select" class="w-full border p-3 rounded-lg bg-white">
+                            </select>
+
+                        <div class="flex flex-col gap-2 p-2 bg-gray-50 rounded-lg">
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input id="is_savings" type="checkbox" class="w-4 h-4 text-blue-600">
+                                <span class="text-sm text-gray-600">Add to Savings (Exclude from Net)</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer">
+                                <input id="is_recurring" type="checkbox" class="w-4 h-4 text-purple-600">
+                                <span class="text-sm text-gray-600">Recurring Monthly</span>
+                            </label>
+                        </div>
+
+                        <button onclick="addTransaction()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition">Save Entry</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2">
+                <div class="bg-white p-6 rounded-2xl shadow-md border border-gray-100 h-full">
+                    <h3 class="font-bold text-lg mb-4 text-gray-700">Spending by Label</h3>
+                    <div class="relative h-64 md:h-80">
+                        <canvas id="spendingChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // REPLACE THESE WITH YOUR ACTUAL SUPABASE KEYS
+        const supabaseUrl = 'YOUR_SUPABASE_URL';
+        const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        let myChart;
+
+        async function init() {
+            await loadLabels();
+            await calculateStats();
+        }
+
+        async function loadLabels() {
+            const { data: labels } = await supabaseClient.from('labels').select('*');
+            const select = document.getElementById('label_select');
+            labels.forEach(label => {
+                const opt = document.createElement('option');
+                opt.value = label.id;
+                opt.textContent = label.name;
+                select.appendChild(opt);
+            });
+        }
+
+        async function addTransaction() {
+            const description = document.getElementById('desc').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const type = document.getElementById('type').value;
+            const label_id = document.getElementById('label_select').value;
+            const is_savings = document.getElementById('is_savings').checked;
+            const is_recurring = document.getElementById('is_recurring').checked;
+
+            if (!amount) return alert("Enter an amount");
+
+            const { error } = await supabaseClient
+                .from('transactions')
+                .insert([{ description, amount, type, label_id, is_savings, is_recurring }]);
+
+            if (error) alert(error.message);
+            else {
+                document.getElementById('desc').value = '';
+                document.getElementById('amount').value = '';
+                await calculateStats();
+            }
+        }
+
+        async function calculateStats() {
+            // Fetch transactions and join with labels
+            const { data: transactions } = await supabaseClient
+                .from('transactions')
+                .select('*, labels(name, color)');
+
+            let net = 0, savings = 0, monthlyRecurring = 0;
+            const chartData = {};
+
+            transactions.forEach(t => {
+                const val = parseFloat(t.amount);
+                
+                if (t.is_savings) {
+                    savings += val;
+                } else {
+                    if (t.type === 'income') net += val;
+                    else {
+                        net -= val;
+                        // Populate chart data for expenses only
+                        const labelName = t.labels?.name || 'Unlabeled';
+                        chartData[labelName] = (chartData[labelName] || 0) + val;
+                    }
+                }
+
+                if (t.is_recurring) {
+                    t.type === 'income' ? monthlyRecurring += val : monthlyRecurring -= val;
+                }
+            });
+
+            // Update UI
+            document.getElementById('net-income').innerText = `$${net.toLocaleString()}`;
+            document.getElementById('total-savings').innerText = `$${savings.toLocaleString()}`;
+            document.getElementById('prognosis').innerText = `$${(net + (monthlyRecurring * 11)).toLocaleString()}`;
+
+            updateChart(chartData);
+        }
+
+        function updateChart(chartData) {
+            const ctx = document.getElementById('spendingChart').getContext('2d');
+            
+            if (myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(chartData),
+                    datasets: [{
+                        data: Object.values(chartData),
+                        backgroundColor: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
