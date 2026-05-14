@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <title>FinanceFlow v6.8</title>
+    <title>FinanceFlow v7.0</title>
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
         .savings-row { background-color: rgba(240, 249, 255, 0.4); }
@@ -16,6 +16,15 @@
         body.modal-active { overflow: hidden; }
         .custom-scrollbar::-webkit-scrollbar { height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+        
+        /* Calendar Styles */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+        .calendar-day { background-color: white; min-height: 80px; padding: 4px; display: flex; flex-direction: column; align-items: flex-end; }
+        .calendar-header { background-color: #f8fafc; text-align: center; padding: 8px; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; }
+        .day-label { font-size: 10px; font-weight: 700; color: #64748b; margin-bottom: 4px; }
+        .cal-income { color: #10b981; font-size: 9px; font-weight: 800; line-height: 1; margin-bottom: 2px; }
+        .cal-expense { color: #ef4444; font-size: 9px; font-weight: 800; line-height: 1; }
+        .not-current-month { background-color: #fcfcfc; opacity: 0.4; }
     </style>
 </head>
 <body class="bg-slate-50 p-4 md:p-8">
@@ -28,19 +37,19 @@
         </header>
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 text-center">
                 <p class="text-[9px] font-black text-emerald-600 uppercase mb-1">Liquid Net (Now)</p>
-                <h2 id="net-today" class="text-lg md:text-2xl font-black text-emerald-600">$0</h2>
+                <h2 id="net-today" class="text-lg md:text-2xl font-black text-emerald-800">$0</h2>
             </div>
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 text-center">
                 <p class="text-[9px] font-black text-sky-600 uppercase mb-1">Savings</p>
                 <h2 id="savings-pool" class="text-lg md:text-2xl font-black text-sky-600">$0</h2>
             </div>
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 text-center">
                 <p class="text-[9px] font-black text-red-600 uppercase mb-1">Future Payments</p>
                 <h2 id="future-total" class="text-lg md:text-2xl font-black text-red-600">$0</h2>
             </div>
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 text-center">
                 <p class="text-[9px] font-black text-slate-600 uppercase mb-1">1-Yr Prognosis</p>
                 <h2 id="prognosis" class="text-lg md:text-2xl font-black text-slate-600">$0</h2>
             </div>
@@ -80,6 +89,17 @@
                     <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase tracking-widest">Flow Distribution (Confirmed Only)</h3>
                     <div id="sankey_chart" style="height: 300px;"></div>
                 </div>
+
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-slate-700 text-xs uppercase tracking-widest">Monthly Outlook</h3>
+                        <span id="calendar-month-name" class="text-[10px] font-black text-indigo-500 uppercase tracking-widest"></span>
+                    </div>
+                    <div class="calendar-grid" id="calendar-body">
+                        <div class="calendar-header">Sun</div><div class="calendar-header">Mon</div><div class="calendar-header">Tue</div>
+                        <div class="calendar-header">Wed</div><div class="calendar-header">Thu</div><div class="calendar-header">Fri</div><div class="calendar-header">Sat</div>
+                        </div>
+                </div>
                 
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-5 border-b border-slate-50">
@@ -103,7 +123,6 @@
         </div>
     </div>
 
-    <!-- Edit Modal -->
     <div id="editModal" class="modal">
         <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl">
             <h3 class="text-2xl font-black mb-6">Edit Entry</h3>
@@ -213,6 +232,8 @@
 
             let netToday = 0, futureTotal = 0, savingsPool = 0, runningBal = 0, totalConfirmedIncome = 0;
             const timeline = [], sankeyRows = [], historyBody = document.getElementById('history-body');
+            const dailyData = {}; // For Calendar
+            
             historyBody.innerHTML = '';
 
             transactions.forEach(t => {
@@ -221,6 +242,12 @@
                 const tDate = new Date(t.created_at);
                 const isFuture = tDate > now;
                 const label = t.labels?.name || 'Misc';
+
+                // Map daily data for calendar (ignoring savings if needed, but showing them helps visibility)
+                const dateKey = tDate.toISOString().split('T')[0];
+                if (!dailyData[dateKey]) dailyData[dateKey] = { inc: 0, exp: 0 };
+                if (isInc) dailyData[dateKey].inc += amt;
+                else dailyData[dateKey].exp += amt;
 
                 if (t.is_savings) {
                     savingsPool += (isInc ? amt : -amt);
@@ -231,7 +258,6 @@
                         futureTotal += (isInc ? amt : -amt); 
                     } else { 
                         isInc ? netToday += amt : netToday -= amt;
-                        // Build Sankey logic only for confirmed, non-savings items
                         if (isInc) totalConfirmedIncome += amt;
                         else sankeyRows.push(['Active Income', label, amt]);
                     }
@@ -262,7 +288,7 @@
                     </tr>`);
             });
 
-            // Finalize Sankey Remainder (Net Balance)
+            // Finalize Sankey
             const confirmedSpent = sankeyRows.reduce((a, b) => a + b[2], 0);
             if (totalConfirmedIncome > confirmedSpent) {
                 sankeyRows.push(['Active Income', 'Current Liquid Net', totalConfirmedIncome - confirmedSpent]);
@@ -275,6 +301,48 @@
 
             updateLineChart(timeline);
             drawSankey(sankeyRows);
+            renderCalendar(dailyData);
+        }
+
+        function renderCalendar(dailyData) {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth();
+            
+            document.getElementById('calendar-month-name').innerText = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const lastDate = new Date(year, month + 1, 0).getDate();
+            
+            const calBody = document.getElementById('calendar-body');
+            // Remove previous days (keep the 7 headers)
+            const headers = calBody.querySelectorAll('.calendar-header');
+            calBody.innerHTML = '';
+            headers.forEach(h => calBody.appendChild(h));
+
+            // Empty days before start
+            for (let i = 0; i < firstDay; i++) {
+                const div = document.createElement('div');
+                div.className = 'calendar-day not-current-month';
+                calBody.appendChild(div);
+            }
+
+            // Actual month days
+            for (let day = 1; day <= lastDate; day++) {
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+                
+                let content = `<span class="day-label">${day}</span>`;
+                
+                if (dailyData[dateKey]) {
+                    if (dailyData[dateKey].inc > 0) content += `<span class="cal-income">+$${dailyData[dateKey].inc.toLocaleString()}</span>`;
+                    if (dailyData[dateKey].exp > 0) content += `<span class="cal-expense">-$${dailyData[dateKey].exp.toLocaleString()}</span>`;
+                }
+                
+                dayDiv.innerHTML = content;
+                calBody.appendChild(dayDiv);
+            }
         }
 
         function updateLineChart(timeline) {
