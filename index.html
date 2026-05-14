@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <title>FinanceFlow v7.5</title>
+    <title>FinanceFlow v7.8</title>
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
         .savings-row { background-color: rgba(240, 249, 255, 0.4); }
@@ -24,7 +24,7 @@
         .cal-income { color: #10b981; font-size: 8px; font-weight: 800; }
         .cal-expense { color: #ef4444; font-size: 8px; font-weight: 800; }
         .not-current-month { background-color: #f8fafc; opacity: 0.5; }
-        .weekend { background-color: #f9fafb; }
+        .weekend { background-color: #f1f5f9; } /* Light grey for weekends */
         .today-border { border: 2px solid #3b82f6 !important; border-radius: 4px; }
 
         @media (max-width: 380px) {
@@ -42,7 +42,6 @@
             </div>
         </header>
 
-        <!-- Stats Grid -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
             <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
                 <p class="text-[8px] font-black text-emerald-600 uppercase">Liquid Net</p>
@@ -72,8 +71,8 @@
                         <input id="amount" type="number" placeholder="0.00" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm font-bold outline-none">
                         <div class="grid grid-cols-2 gap-2">
                             <select id="type" class="border-slate-200 border p-2.5 rounded-xl text-sm bg-slate-50 font-semibold">
-                                <option value="income">Income (+)</option>
-                                <option value="expense">Expense (-)</option>
+                                <option value="income">Income</option>
+                                <option value="expense">Expense</option>
                             </select>
                             <select id="label_select" class="border-slate-200 border p-2.5 rounded-xl text-sm bg-slate-50 font-semibold"></select>
                         </div>
@@ -87,28 +86,26 @@
             </div>
 
             <div class="lg:col-span-2 space-y-6">
-                <!-- Trend -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-bold text-slate-700 text-[10px] uppercase tracking-widest">Liquid Trend</h3>
                         <select id="chartRange" onchange="calculateStats()" class="text-[10px] font-black border-none bg-slate-50 rounded-lg p-1 outline-none">
                             <option value="all">From Beginning</option>
-                            <option value="1">1 Month (from today)</option>
-                            <option value="3">3 Months (from today)</option>
-                            <option value="6">6 Months (from today)</option>
-                            <option value="9">9 Months (from today)</option>
-                            <option value="12">1 Year (from today)</option>
+                            <option value="1">Last 1 Month</option>
+                            <option value="3">Last 3 Months</option>
+                            <option value="6">Last 6 Months</option>
+                            <option value="9">Last 9 Months</option>
+                            <option value="12">Last 1 Year</option>
                         </select>
                     </div>
                     <div class="h-48 md:h-64"><canvas id="lineChart"></canvas></div>
                 </div>
 
-                <!-- Calendar -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex justify-between items-center mb-4">
-                        <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-full">←</button>
+                        <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 font-bold">←</button>
                         <h3 id="calendar-month-name" class="font-black text-slate-800 text-[11px] uppercase tracking-tighter"></h3>
-                        <button onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-full">→</button>
+                        <button onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 font-bold">→</button>
                     </div>
                     <div class="calendar-grid" id="calendar-body">
                         <div class="calendar-header">S</div><div class="calendar-header">M</div><div class="calendar-header">T</div>
@@ -116,13 +113,6 @@
                     </div>
                 </div>
 
-                <!-- Sankey -->
-                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="font-bold text-slate-700 mb-4 text-[10px] uppercase tracking-widest">Flow (Confirmed)</h3>
-                    <div id="sankey_chart" style="height: 250px;"></div>
-                </div>
-                
-                <!-- History -->
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-4 border-b border-slate-50"><h3 class="font-bold text-slate-800 text-xs uppercase">History</h3></div>
                     <div class="overflow-x-auto custom-scrollbar">
@@ -166,7 +156,6 @@
         document.getElementById('header-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
         document.getElementById('date').valueAsDate = new Date();
 
-        // Helper to parse dates without timezone shifts
         function parseLocal(str) {
             const parts = str.split('T')[0].split('-');
             return new Date(parts[0], parts[1] - 1, parts[2]);
@@ -195,8 +184,7 @@
         }
 
         async function confirmTransaction(id) {
-            const confirmedDate = new Date().toISOString();
-            await supabaseClient.from('transactions').update({ created_at: confirmedDate }).eq('id', id);
+            await supabaseClient.from('transactions').update({ created_at: new Date().toISOString() }).eq('id', id);
             calculateStats();
         }
 
@@ -218,10 +206,7 @@
             document.body.classList.add('modal-active');
         }
 
-        function closeEditModal() { 
-            document.getElementById('editModal').classList.remove('active'); 
-            document.body.classList.remove('modal-active');
-        }
+        function closeEditModal() { document.getElementById('editModal').classList.remove('active'); document.body.classList.remove('modal-active'); }
 
         async function saveEdit() {
             const id = document.getElementById('edit_id').value;
@@ -243,21 +228,28 @@
             const now = new Date(); 
             const rangeValue = document.getElementById('chartRange').value;
 
-            let netToday = 0, futureTotal = 0, savingsPool = 0, runningBal = 0, totalConfirmedIncome = 0;
-            const timeline = [], sankeyRows = [], historyBody = document.getElementById('history-body');
+            let netToday = 0, futureTotal = 0, savingsPool = 0, runningBal = 0;
+            const timeline = [], historyBody = document.getElementById('history-body');
             const dailyData = {};
             
             historyBody.innerHTML = '';
 
+            // 1. Calculate Cutoff for Chart Range
+            let cutOffDate = null;
+            if (rangeValue !== 'all') {
+                cutOffDate = new Date();
+                cutOffDate.setMonth(cutOffDate.getMonth() - parseInt(rangeValue));
+                cutOffDate.setHours(0,0,0,0);
+            }
+
             transactions.forEach(t => {
                 const amt = parseFloat(t.amount);
                 const isInc = t.type === 'income';
-                const tDate = parseLocal(t.created_at); // Fixed Date Parsing
+                const tDate = parseLocal(t.created_at);
                 const isFuture = tDate > now;
                 const label = t.labels?.name || 'Misc';
-
-                // Map daily data for calendar
                 const dateKey = tDate.toISOString().split('T')[0];
+
                 if (!dailyData[dateKey]) dailyData[dateKey] = { inc: 0, exp: 0 };
                 if (isInc) dailyData[dateKey].inc += amt;
                 else dailyData[dateKey].exp += amt;
@@ -267,28 +259,22 @@
                 } else {
                     isInc ? runningBal += amt : runningBal -= amt;
                     if (isFuture) futureTotal += (isInc ? amt : -amt); 
-                    else { 
-                        isInc ? netToday += amt : netToday -= amt;
-                        if (isInc) totalConfirmedIncome += amt;
-                        else sankeyRows.push(['Active Income', label, amt]);
-                    }
+                    else netToday += (isInc ? amt : -amt);
 
-                    // Strict Range Logic
-                    let includeInChart = true;
-                    if (rangeValue !== 'all') {
-                        const cutOff = new Date();
-                        cutOff.setMonth(cutOff.getMonth() - parseInt(rangeValue));
-                        if (tDate < cutOff) includeInChart = false;
+                    // Range Logic: Only push if date is within selected range
+                    if (!cutOffDate || tDate >= cutOffDate) {
+                        timeline.push({ 
+                            x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), 
+                            y: runningBal, 
+                            isFuture 
+                        });
                     }
-                    if (includeInChart) timeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningBal, isFuture });
                 }
 
-                // Updated History Row: Swapped Amount & Desc + Added Edit Button
                 historyBody.insertAdjacentHTML('afterbegin', `
                     <tr class="${isFuture ? 'future-row' : ''} ${t.is_savings ? 'savings-row' : ''}">
                         <td class="px-4 py-3 text-[9px] font-black text-slate-400">
-                            ${tDate.toLocaleDateString()}<br>
-                            ${isFuture ? '<span class="text-indigo-600">[FUTURE]</span>' : '<span>[OK]</span>'}
+                            ${tDate.toLocaleDateString()}
                         </td>
                         <td class="px-4 py-3 text-left font-black text-xs ${isInc ? 'text-emerald-500' : 'text-rose-500'}">
                             $${amt.toLocaleString()}
@@ -300,37 +286,30 @@
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
                                 ${isFuture ? `<button onclick="confirmTransaction('${t.id}')" class="text-indigo-600 font-black text-[9px]">CONFIRM</button>` : ''}
-                                <button onclick="openEditModal('${t.id}')" class="text-slate-400 hover:text-slate-800 text-[9px] font-black uppercase">Edit</button>
+                                <button onclick="openEditModal('${t.id}')" class="text-slate-400 text-[9px] font-black uppercase">Edit</button>
                                 <button onclick="deleteTransaction('${t.id}')" class="text-slate-300 text-lg">×</button>
                             </div>
                         </td>
                     </tr>`);
             });
 
-            const confirmedSpent = sankeyRows.reduce((a, b) => a + b[2], 0);
-            if (totalConfirmedIncome > confirmedSpent) sankeyRows.push(['Active Income', 'Current Net', totalConfirmedIncome - confirmedSpent]);
-
             document.getElementById('net-today').innerText = `$${netToday.toLocaleString()}`;
             document.getElementById('savings-pool').innerText = `$${savingsPool.toLocaleString()}`;
             document.getElementById('future-total').innerText = `$${futureTotal.toLocaleString()}`;
-            document.getElementById('prognosis').innerText = `$${(netToday * 1.15).toLocaleString()}`;
+            document.getElementById('prognosis').innerText = `$${(netToday + futureTotal).toLocaleString()}`;
 
             updateLineChart(timeline);
-            drawSankey(sankeyRows);
             renderCalendar(dailyData);
         }
 
         function renderCalendar(dailyData) {
-            const year = currentViewDate.getFullYear();
-            const month = currentViewDate.getMonth();
+            const year = currentViewDate.getFullYear(), month = currentViewDate.getMonth();
             const todayStr = new Date().toISOString().split('T')[0];
-            
             document.getElementById('calendar-month-name').innerText = currentViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
             
             const firstDayOfMonth = new Date(year, month, 1);
-            const firstDayIdx = firstDayOfMonth.getDay();
             const calStart = new Date(firstDayOfMonth);
-            calStart.setDate(calStart.getDate() - firstDayIdx);
+            calStart.setDate(calStart.getDate() - firstDayOfMonth.getDay());
 
             const calBody = document.getElementById('calendar-body');
             const headers = calBody.querySelectorAll('.calendar-header');
@@ -340,19 +319,9 @@
             for (let i = 0; i < 42; i++) {
                 const dateObj = new Date(calStart);
                 dateObj.setDate(dateObj.getDate() + i);
-                
-                // Use manual format to match dailyData keys perfectly
-                const y = dateObj.getFullYear();
-                const m = String(dateObj.getMonth() + 1).padStart(2, '0');
-                const d = String(dateObj.getDate()).padStart(2, '0');
-                const dateKey = `${y}-${m}-${d}`;
-
-                const dayIdx = dateObj.getDay();
+                const dateKey = dateObj.toISOString().split('T')[0];
                 const dayDiv = document.createElement('div');
-                dayDiv.className = 'calendar-day';
-                if (dateObj.getMonth() !== month) dayDiv.classList.add('not-current-month');
-                if (dayIdx === 0 || dayIdx === 6) dayDiv.classList.add('weekend');
-                if (dateKey === todayStr) dayDiv.classList.add('today-border');
+                dayDiv.className = `calendar-day ${dateObj.getMonth() !== month ? 'not-current-month' : ''} ${(dateObj.getDay() === 0 || dateObj.getDay() === 6) ? 'weekend' : ''} ${dateKey === todayStr ? 'today-border' : ''}`;
                 
                 let content = `<span class="day-label">${dateObj.getDate()}</span>`;
                 if (dailyData[dateKey]) {
@@ -361,49 +330,45 @@
                 }
                 dayDiv.innerHTML = content;
                 calBody.appendChild(dayDiv);
-                
-                if (i >= 34 && dateObj.getMonth() !== month && dayIdx === 6) break;
+                if (i >= 34 && dateObj.getMonth() !== month && dateObj.getDay() === 6) break;
             }
         }
 
         function updateLineChart(timeline) {
             if (lineChart) lineChart.destroy();
+            if (timeline.length === 0) return;
+
+            // Determine if line should be green (gain) or red (loss)
+            const startVal = timeline[0].y;
+            const endVal = timeline[timeline.length - 1].y;
+            const lineColor = endVal >= startVal ? '#10b981' : '#ef4444';
+
             lineChart = new Chart(document.getElementById('lineChart'), {
                 type: 'line',
                 data: {
                     labels: timeline.map(d => d.x),
                     datasets: [{
                         data: timeline.map(d => d.y),
-                        borderColor: '#6366f1',
-                        borderWidth: 2,
-                        tension: 0.1,
-                        pointRadius: 3,
-                        pointBackgroundColor: '#6366f1',
-                        segment: { borderDash: ctx => timeline[ctx.p1DataIndex]?.isFuture ? [5, 5] : undefined }
+                        borderColor: lineColor,
+                        borderWidth: 2.5,
+                        tension: 0.3,
+                        pointRadius: 0, // Removed dots
+                        pointHitRadius: 10,
+                        fill: false
                     }]
                 },
                 options: { 
                     responsive: true, maintainAspectRatio: false, 
                     plugins: { legend: { display: false } },
                     scales: { 
-                        x: { ticks: { font: { size: 8 } }, grid: { display: false } },
+                        x: { ticks: { font: { size: 8 }, maxRotation: 0 }, grid: { display: false } },
                         y: { ticks: { font: { size: 8 } } }
                     } 
                 }
             });
         }
 
-        function drawSankey(rows) {
-            if (rows.length === 0) return;
-            const data = new google.visualization.DataTable();
-            data.addColumn('string', 'From'); data.addColumn('string', 'To'); data.addColumn('number', 'Amount');
-            data.addRows(rows);
-            new google.visualization.Sankey(document.getElementById('sankey_chart')).draw(data, {
-                sankey: { node: { colors: ['#1e293b', '#6366f1', '#10b981', '#f59e0b', '#ef4444'], label: { fontSize: 9, bold: true } } }
-            });
-        }
-
-        async function deleteTransaction(id) { if (confirm("Delete?")) { await supabaseClient.from('transactions').delete().eq('id', id); init(); } }
+        async function deleteTransaction(id) { if (confirm("Delete?")) { await supabaseClient.from('transactions').delete().eq('id', id); calculateStats(); } }
         google.charts.setOnLoadCallback(init);
     </script>
 </body>
