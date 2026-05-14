@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <title>FinanceFlow v7.0</title>
+    <title>FinanceFlow v7.2</title>
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
         .savings-row { background-color: rgba(240, 249, 255, 0.4); }
@@ -17,104 +17,113 @@
         .custom-scrollbar::-webkit-scrollbar { height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         
-        /* Calendar Styles */
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
-        .calendar-day { background-color: white; min-height: 80px; padding: 4px; display: flex; flex-direction: column; align-items: flex-end; }
-        .calendar-header { background-color: #f8fafc; text-align: center; padding: 8px; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; }
-        .day-label { font-size: 10px; font-weight: 700; color: #64748b; margin-bottom: 4px; }
-        .cal-income { color: #10b981; font-size: 9px; font-weight: 800; line-height: 1; margin-bottom: 2px; }
-        .cal-expense { color: #ef4444; font-size: 9px; font-weight: 800; line-height: 1; }
-        .not-current-month { background-color: #fcfcfc; opacity: 0.4; }
+        /* Calendar Enhancements */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+        .calendar-day { background-color: white; min-height: 55px; padding: 2px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+        .calendar-header { background-color: #f8fafc; text-align: center; padding: 6px 0; font-size: 9px; font-weight: 900; text-transform: uppercase; color: #94a3b8; }
+        .day-label { font-size: 10px; font-weight: 700; color: #64748b; margin-bottom: 2px; }
+        .cal-income { color: #10b981; font-size: 8px; font-weight: 800; }
+        .cal-expense { color: #ef4444; font-size: 8px; font-weight: 800; }
+        .not-current-month { background-color: #f8fafc; opacity: 0.5; }
+        .weekend { background-color: #f9fafb; }
+        .today-border { border: 2px solid #3b82f6 !important; border-radius: 4px; }
+
+        @media (max-width: 380px) { /* iPhone SE Optimization */
+            .calendar-day { min-height: 48px; }
+            .cal-income, .cal-expense { font-size: 7px; }
+            h2 { font-size: 1.1rem !important; }
+        }
     </style>
 </head>
-<body class="bg-slate-50 p-4 md:p-8">
+<body class="bg-slate-50 p-3 md:p-8">
     <div class="max-w-6xl mx-auto">
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
                 <h1 class="text-3xl font-black text-slate-900 tracking-tight">Finance<span class="text-indigo-600">Flow</span></h1>
                 <p id="header-date" class="text-indigo-500 font-bold text-sm uppercase tracking-widest"></p>
             </div>
         </header>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 text-center">
-                <p class="text-[9px] font-black text-emerald-600 uppercase mb-1">Liquid Net (Now)</p>
-                <h2 id="net-today" class="text-lg md:text-2xl font-black text-emerald-800">$0</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
+                <p class="text-[8px] font-black text-emerald-600 uppercase">Liquid Net</p>
+                <h2 id="net-today" class="text-base md:text-xl font-black text-emerald-800">$0</h2>
             </div>
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 text-center">
-                <p class="text-[9px] font-black text-sky-600 uppercase mb-1">Savings</p>
-                <h2 id="savings-pool" class="text-lg md:text-2xl font-black text-sky-600">$0</h2>
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
+                <p class="text-[8px] font-black text-sky-600 uppercase">Savings</p>
+                <h2 id="savings-pool" class="text-base md:text-xl font-black text-sky-600">$0</h2>
             </div>
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 text-center">
-                <p class="text-[9px] font-black text-red-600 uppercase mb-1">Future Payments</p>
-                <h2 id="future-total" class="text-lg md:text-2xl font-black text-red-600">$0</h2>
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
+                <p class="text-[8px] font-black text-red-600 uppercase">Future</p>
+                <h2 id="future-total" class="text-base md:text-xl font-black text-red-600">$0</h2>
             </div>
-            <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 text-center">
-                <p class="text-[9px] font-black text-slate-600 uppercase mb-1">1-Yr Prognosis</p>
-                <h2 id="prognosis" class="text-lg md:text-2xl font-black text-slate-600">$0</h2>
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
+                <p class="text-[8px] font-black text-slate-600 uppercase">Prognosis</p>
+                <h2 id="prognosis" class="text-base md:text-xl font-black text-slate-600">$0</h2>
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-1">
-                <div class="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 sticky top-8">
-                    <h3 class="font-bold text-lg mb-6 text-slate-800">New Entry</h3>
-                    <div class="space-y-4">
-                        <input id="date" type="date" class="w-full border-slate-200 border p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
-                        <input id="desc" type="text" placeholder="Description" class="w-full border-slate-200 border p-3 rounded-xl outline-none">
-                        <input id="amount" type="number" placeholder="0.00" class="w-full border-slate-200 border p-3 rounded-xl font-bold outline-none">
+                <div class="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 sticky top-4">
+                    <h3 class="font-bold text-base mb-4 text-slate-800">New Entry</h3>
+                    <div class="space-y-3">
+                        <input id="date" type="date" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm outline-none">
+                        <input id="desc" type="text" placeholder="Description" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm outline-none">
+                        <input id="amount" type="number" placeholder="0.00" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm font-bold outline-none">
                         <div class="grid grid-cols-2 gap-2">
-                            <select id="type" class="border-slate-200 border p-3 rounded-xl bg-slate-50 font-semibold">
+                            <select id="type" class="border-slate-200 border p-2.5 rounded-xl text-sm bg-slate-50 font-semibold">
                                 <option value="income">Income (+)</option>
                                 <option value="expense">Expense (-)</option>
                             </select>
-                            <select id="label_select" class="border-slate-200 border p-3 rounded-xl bg-slate-50 font-semibold"></select>
+                            <select id="label_select" class="border-slate-200 border p-2.5 rounded-xl text-sm bg-slate-50 font-semibold"></select>
                         </div>
                         <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
-                            <input id="is_savings" type="checkbox" class="w-5 h-5 accent-sky-500">
-                            <label for="is_savings" class="text-[10px] font-black text-slate-500 uppercase">Mark as Savings</label>
+                            <input id="is_savings" type="checkbox" class="w-4 h-4 accent-sky-500">
+                            <label for="is_savings" class="text-[9px] font-black text-slate-500 uppercase">Mark as Savings</label>
                         </div>
-                        <button onclick="addTransaction()" class="w-full bg-slate-900 text-white font-black py-4 rounded-2xl hover:bg-black shadow-lg">Save Entry</button>
+                        <button onclick="addTransaction()" class="w-full bg-slate-900 text-white font-black py-3 rounded-xl hover:bg-black shadow-lg text-sm">Save Entry</button>
                     </div>
                 </div>
             </div>
 
-            <div class="lg:col-span-2 space-y-8">
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase tracking-widest">Liquid Balance Trend</h3>
-                    <div class="h-64"><canvas id="lineChart"></canvas></div>
-                </div>
-
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                    <h3 class="font-bold text-slate-700 mb-4 text-xs uppercase tracking-widest">Flow Distribution (Confirmed Only)</h3>
-                    <div id="sankey_chart" style="height: 300px;"></div>
-                </div>
-
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-slate-700 text-xs uppercase tracking-widest">Monthly Outlook</h3>
-                        <span id="calendar-month-name" class="text-[10px] font-black text-indigo-500 uppercase tracking-widest"></span>
+                        <h3 class="font-bold text-slate-700 text-[10px] uppercase tracking-widest">Liquid Trend</h3>
+                        <select id="chartRange" onchange="calculateStats()" class="text-[10px] font-black border-none bg-slate-50 rounded-lg p-1 outline-none">
+                            <option value="all">From Beginning</option>
+                            <option value="1">1 Month</option>
+                            <option value="3">3 Months</option>
+                            <option value="6">6 Months</option>
+                            <option value="9">9 Months</option>
+                            <option value="12">1 Year</option>
+                        </select>
+                    </div>
+                    <div class="h-48 md:h-64"><canvas id="lineChart"></canvas></div>
+                </div>
+
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-full">←</button>
+                        <h3 id="calendar-month-name" class="font-black text-slate-800 text-[11px] uppercase tracking-tighter"></h3>
+                        <button onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-full">→</button>
                     </div>
                     <div class="calendar-grid" id="calendar-body">
-                        <div class="calendar-header">Sun</div><div class="calendar-header">Mon</div><div class="calendar-header">Tue</div>
-                        <div class="calendar-header">Wed</div><div class="calendar-header">Thu</div><div class="calendar-header">Fri</div><div class="calendar-header">Sat</div>
-                        </div>
+                        <div class="calendar-header">S</div><div class="calendar-header">M</div><div class="calendar-header">T</div>
+                        <div class="calendar-header">W</div><div class="calendar-header">T</div><div class="calendar-header">F</div><div class="calendar-header">S</div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-slate-700 mb-4 text-[10px] uppercase tracking-widest">Flow (Confirmed)</h3>
+                    <div id="sankey_chart" style="height: 250px;"></div>
                 </div>
                 
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="p-5 border-b border-slate-50">
-                        <h3 class="font-bold text-slate-800 text-sm uppercase">Transaction History</h3>
-                    </div>
+                    <div class="p-4 border-b border-slate-50"><h3 class="font-bold text-slate-800 text-xs uppercase">History</h3></div>
                     <div class="overflow-x-auto custom-scrollbar">
-                        <table class="w-full text-left min-w-[600px]">
-                            <thead class="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                <tr>
-                                    <th class="px-6 py-4">Date & Status</th>
-                                    <th class="px-6 py-4">Description</th>
-                                    <th class="px-6 py-4 text-right">Amount</th>
-                                    <th class="px-6 py-4 text-center">Actions</th>
-                                </tr>
-                            </thead>
+                        <table class="w-full text-left min-w-[500px]">
                             <tbody id="history-body" class="divide-y divide-slate-50"></tbody>
                         </table>
                     </div>
@@ -123,28 +132,21 @@
         </div>
     </div>
 
+    <!-- Edit Modal stays same as previous version -->
     <div id="editModal" class="modal">
         <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl">
             <h3 class="text-2xl font-black mb-6">Edit Entry</h3>
             <div class="space-y-4">
-                <input id="edit_id" type="hidden">
-                <input id="edit_date" type="date" class="w-full border p-3 rounded-xl outline-none">
-                <input id="edit_desc" type="text" class="w-full border p-3 rounded-xl outline-none">
-                <input id="edit_amount" type="number" class="w-full border p-3 rounded-xl outline-none font-bold">
+                <input id="edit_id" type="hidden"><input id="edit_date" type="date" class="w-full border p-3 rounded-xl outline-none">
+                <input id="edit_desc" type="text" class="w-full border p-3 rounded-xl outline-none"><input id="edit_amount" type="number" class="w-full border p-3 rounded-xl outline-none font-bold">
                 <div class="grid grid-cols-2 gap-2">
-                    <select id="edit_type" class="border p-3 rounded-xl bg-slate-50">
-                        <option value="income">Income</option>
-                        <option value="expense">Expense</option>
-                    </select>
+                    <select id="edit_type" class="border p-3 rounded-xl bg-slate-50"><option value="income">Income</option><option value="expense">Expense</option></select>
                     <select id="edit_label" class="border p-3 rounded-xl bg-slate-50"></select>
                 </div>
-                <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
-                    <input id="edit_savings" type="checkbox" class="w-5 h-5">
-                    <label class="text-[10px] font-black uppercase text-slate-500">Savings Entry</label>
-                </div>
+                <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl"><input id="edit_savings" type="checkbox" class="w-5 h-5"><label class="text-[10px] font-black uppercase text-slate-500">Savings</label></div>
                 <div class="flex gap-2 pt-4">
                     <button onclick="closeEditModal()" class="flex-1 py-3 font-bold text-slate-400">Cancel</button>
-                    <button onclick="saveEdit()" class="flex-1 py-3 bg-indigo-600 text-white font-black rounded-xl shadow-lg">Save Changes</button>
+                    <button onclick="saveEdit()" class="flex-1 py-3 bg-indigo-600 text-white font-black rounded-xl shadow-lg">Save</button>
                 </div>
             </div>
         </div>
@@ -156,6 +158,7 @@
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
         let lineChart;
+        let currentViewDate = new Date();
         google.charts.load('current', {'packages':['sankey']});
         document.getElementById('header-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
         document.getElementById('date').valueAsDate = new Date();
@@ -178,61 +181,29 @@
                 created_at: new Date(document.getElementById('date').value).toISOString()
             };
             await supabaseClient.from('transactions').insert([payload]);
-            document.getElementById('desc').value = '';
-            document.getElementById('amount').value = '';
+            document.getElementById('desc').value = ''; document.getElementById('amount').value = '';
             init();
         }
 
         async function confirmTransaction(id) {
             const confirmedDate = new Date(Date.now() - 60000).toISOString();
-            const { error } = await supabaseClient
-                .from('transactions')
-                .update({ created_at: confirmedDate })
-                .eq('id', id);
-            
-            if (!error) await calculateStats();
+            await supabaseClient.from('transactions').update({ created_at: confirmedDate }).eq('id', id);
+            calculateStats();
         }
 
-        async function openEditModal(id) {
-            const { data: t } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
-            document.getElementById('edit_id').value = t.id;
-            document.getElementById('edit_date').value = t.created_at.split('T')[0];
-            document.getElementById('edit_desc').value = t.description;
-            document.getElementById('edit_amount').value = t.amount;
-            document.getElementById('edit_type').value = t.type;
-            document.getElementById('edit_label').value = t.label_id;
-            document.getElementById('edit_savings').checked = t.is_savings;
-            document.getElementById('editModal').classList.add('active');
-            document.body.classList.add('modal-active');
-        }
-
-        function closeEditModal() { 
-            document.getElementById('editModal').classList.remove('active'); 
-            document.body.classList.remove('modal-active');
-        }
-
-        async function saveEdit() {
-            const id = document.getElementById('edit_id').value;
-            const payload = {
-                description: document.getElementById('edit_desc').value,
-                amount: parseFloat(document.getElementById('edit_amount').value),
-                type: document.getElementById('edit_type').value,
-                label_id: document.getElementById('edit_label').value,
-                is_savings: document.getElementById('edit_savings').checked,
-                created_at: new Date(document.getElementById('edit_date').value).toISOString()
-            };
-            await supabaseClient.from('transactions').update(payload).eq('id', id);
-            closeEditModal();
-            init();
+        function changeMonth(dir) {
+            currentViewDate.setMonth(currentViewDate.getMonth() + dir);
+            calculateStats();
         }
 
         async function calculateStats() {
             const { data: transactions } = await supabaseClient.from('transactions').select('*, labels(*)').order('created_at', { ascending: true });
             const now = new Date(); 
+            const rangeValue = document.getElementById('chartRange').value;
 
             let netToday = 0, futureTotal = 0, savingsPool = 0, runningBal = 0, totalConfirmedIncome = 0;
             const timeline = [], sankeyRows = [], historyBody = document.getElementById('history-body');
-            const dailyData = {}; // For Calendar
+            const dailyData = {};
             
             historyBody.innerHTML = '';
 
@@ -243,7 +214,6 @@
                 const isFuture = tDate > now;
                 const label = t.labels?.name || 'Misc';
 
-                // Map daily data for calendar (ignoring savings if needed, but showing them helps visibility)
                 const dateKey = tDate.toISOString().split('T')[0];
                 if (!dailyData[dateKey]) dailyData[dateKey] = { inc: 0, exp: 0 };
                 if (isInc) dailyData[dateKey].inc += amt;
@@ -253,51 +223,50 @@
                     savingsPool += (isInc ? amt : -amt);
                 } else {
                     isInc ? runningBal += amt : runningBal -= amt;
-                    
-                    if (isFuture) { 
-                        futureTotal += (isInc ? amt : -amt); 
-                    } else { 
+                    if (isFuture) futureTotal += (isInc ? amt : -amt); 
+                    else { 
                         isInc ? netToday += amt : netToday -= amt;
                         if (isInc) totalConfirmedIncome += amt;
                         else sankeyRows.push(['Active Income', label, amt]);
                     }
-                    
-                    timeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningBal, isFuture });
+
+                    // Range Logic for Chart
+                    let includeInChart = true;
+                    if (rangeValue !== 'all') {
+                        const cutOff = new Date();
+                        cutOff.setMonth(cutOff.getMonth() - parseInt(rangeValue));
+                        if (tDate < cutOff) includeInChart = false;
+                    }
+                    if (includeInChart) timeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningBal, isFuture });
                 }
 
                 historyBody.insertAdjacentHTML('afterbegin', `
                     <tr class="${isFuture ? 'future-row' : ''} ${t.is_savings ? 'savings-row' : ''}">
-                        <td class="px-6 py-4">
-                            <span class="text-[10px] font-black text-slate-400">${tDate.toLocaleDateString()}</span><br>
-                            ${isFuture ? '<span class="text-[8px] text-indigo-600 font-black">[FUTURE]</span>' : '<span class="text-[8px] text-slate-400 font-black">[CLEARED]</span>'}
+                        <td class="px-4 py-3 text-[9px] font-black text-slate-400">
+                            ${tDate.toLocaleDateString()}<br>
+                            ${isFuture ? '<span class="text-indigo-600">[FUTURE]</span>' : '<span>[OK]</span>'}
                         </td>
-                        <td class="px-6 py-4">
-                            <div class="font-bold text-slate-800 text-sm">${t.description}</div>
-                            <div class="text-[9px] uppercase font-black text-slate-400">${label}</div>
+                        <td class="px-4 py-3">
+                            <div class="font-bold text-slate-800 text-xs">${t.description}</div>
+                            <div class="text-[8px] uppercase font-black text-slate-400">${label}</div>
                         </td>
-                        <td class="px-6 py-4 text-right font-black ${isInc ? 'text-emerald-500' : 'text-rose-500'}">
-                            ${isInc ? '+' : '-'}$${amt.toLocaleString()}
+                        <td class="px-4 py-3 text-right font-black text-xs ${isInc ? 'text-emerald-500' : 'text-rose-500'}">
+                            $${amt.toLocaleString()}
                         </td>
-                        <td class="px-6 py-4 text-center">
-                            <div class="flex items-center justify-center gap-3">
-                                ${isFuture ? `<button onclick="confirmTransaction('${t.id}')" class="bg-indigo-600 text-white font-black text-[10px] px-3 py-1.5 rounded-lg shadow hover:bg-indigo-700 transition active:scale-95">CONFIRM</button>` : ''}
-                                <button onclick="openEditModal('${t.id}')" class="text-slate-400 hover:text-slate-800 text-[10px] font-black uppercase">Edit</button>
-                                <button onclick="deleteTransaction('${t.id}')" class="text-slate-300 hover:text-rose-500 text-xl">×</button>
-                            </div>
+                        <td class="px-4 py-3 text-right">
+                            ${isFuture ? `<button onclick="confirmTransaction('${t.id}')" class="text-indigo-600 font-black text-[9px] mr-2">CONFIRM</button>` : ''}
+                            <button onclick="deleteTransaction('${t.id}')" class="text-slate-300 text-lg">×</button>
                         </td>
                     </tr>`);
             });
 
-            // Finalize Sankey
             const confirmedSpent = sankeyRows.reduce((a, b) => a + b[2], 0);
-            if (totalConfirmedIncome > confirmedSpent) {
-                sankeyRows.push(['Active Income', 'Current Liquid Net', totalConfirmedIncome - confirmedSpent]);
-            }
+            if (totalConfirmedIncome > confirmedSpent) sankeyRows.push(['Active Income', 'Current Net', totalConfirmedIncome - confirmedSpent]);
 
             document.getElementById('net-today').innerText = `$${netToday.toLocaleString()}`;
             document.getElementById('savings-pool').innerText = `$${savingsPool.toLocaleString()}`;
             document.getElementById('future-total').innerText = `$${futureTotal.toLocaleString()}`;
-            document.getElementById('prognosis').innerText = `$${(netToday + (netToday * 0.15)).toLocaleString()}`;
+            document.getElementById('prognosis').innerText = `$${(netToday * 1.15).toLocaleString()}`;
 
             updateLineChart(timeline);
             drawSankey(sankeyRows);
@@ -305,43 +274,44 @@
         }
 
         function renderCalendar(dailyData) {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
+            const year = currentViewDate.getFullYear();
+            const month = currentViewDate.getMonth();
+            const todayStr = new Date().toISOString().split('T')[0];
             
-            document.getElementById('calendar-month-name').innerText = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            document.getElementById('calendar-month-name').innerText = currentViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
             
-            const firstDay = new Date(year, month, 1).getDay();
-            const lastDate = new Date(year, month + 1, 0).getDate();
-            
+            const firstDayOfMonth = new Date(year, month, 1);
+            const firstDayIdx = firstDayOfMonth.getDay();
+            const calStart = new Date(firstDayOfMonth);
+            calStart.setDate(calStart.getDate() - firstDayIdx);
+
             const calBody = document.getElementById('calendar-body');
-            // Remove previous days (keep the 7 headers)
             const headers = calBody.querySelectorAll('.calendar-header');
             calBody.innerHTML = '';
             headers.forEach(h => calBody.appendChild(h));
 
-            // Empty days before start
-            for (let i = 0; i < firstDay; i++) {
-                const div = document.createElement('div');
-                div.className = 'calendar-day not-current-month';
-                calBody.appendChild(div);
-            }
-
-            // Actual month days
-            for (let day = 1; day <= lastDate; day++) {
-                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            for (let i = 0; i < 42; i++) {
+                const dateObj = new Date(calStart);
+                dateObj.setDate(dateObj.getDate() + i);
+                const dateKey = dateObj.toISOString().split('T')[0];
+                const dayIdx = dateObj.getDay();
+                
                 const dayDiv = document.createElement('div');
                 dayDiv.className = 'calendar-day';
+                if (dateObj.getMonth() !== month) dayDiv.classList.add('not-current-month');
+                if (dayIdx === 0 || dayIdx === 6) dayDiv.classList.add('weekend');
+                if (dateKey === todayStr) dayDiv.classList.add('today-border');
                 
-                let content = `<span class="day-label">${day}</span>`;
-                
+                let content = `<span class="day-label">${dateObj.getDate()}</span>`;
                 if (dailyData[dateKey]) {
-                    if (dailyData[dateKey].inc > 0) content += `<span class="cal-income">+$${dailyData[dateKey].inc.toLocaleString()}</span>`;
-                    if (dailyData[dateKey].exp > 0) content += `<span class="cal-expense">-$${dailyData[dateKey].exp.toLocaleString()}</span>`;
+                    if (dailyData[dateKey].inc > 0) content += `<span class="cal-income">${dailyData[dateKey].inc.toLocaleString()}</span>`;
+                    if (dailyData[dateKey].exp > 0) content += `<span class="cal-expense">${dailyData[dateKey].exp.toLocaleString()}</span>`;
                 }
-                
                 dayDiv.innerHTML = content;
                 calBody.appendChild(dayDiv);
+                
+                // Break if we've filled the month and finished the week
+                if (i >= 34 && dateObj.getMonth() !== month && dayIdx === 6) break;
             }
         }
 
@@ -352,48 +322,37 @@
                 data: {
                     labels: timeline.map(d => d.x),
                     datasets: [{
-                        label: 'Running Balance',
                         data: timeline.map(d => d.y),
                         borderColor: '#6366f1',
                         borderWidth: 2,
                         tension: 0.1,
-                        pointRadius: 4,
+                        pointRadius: 3,
                         pointBackgroundColor: '#6366f1',
-                        pointHoverRadius: 6,
                         segment: { borderDash: ctx => timeline[ctx.p1DataIndex]?.isFuture ? [5, 5] : undefined }
                     }]
                 },
                 options: { 
-                    responsive: true, 
-                    maintainAspectRatio: false, 
+                    responsive: true, maintainAspectRatio: false, 
                     plugins: { legend: { display: false } },
                     scales: { 
-                        x: { 
-                            ticks: { font: { size: 9, weight: 'bold' }, color: '#94a3b8' },
-                            grid: { display: false }
-                        },
-                        y: {
-                            ticks: { font: { size: 9 } }
-                        }
+                        x: { ticks: { font: { size: 8 } }, grid: { display: false } },
+                        y: { ticks: { font: { size: 8 } } }
                     } 
                 }
             });
         }
 
         function drawSankey(rows) {
-            if (rows.length === 0) {
-                document.getElementById('sankey_chart').innerHTML = '<div class="h-full flex items-center justify-center text-slate-300 font-bold">No confirmed flow data</div>';
-                return;
-            }
+            if (rows.length === 0) return;
             const data = new google.visualization.DataTable();
             data.addColumn('string', 'From'); data.addColumn('string', 'To'); data.addColumn('number', 'Amount');
             data.addRows(rows);
             new google.visualization.Sankey(document.getElementById('sankey_chart')).draw(data, {
-                sankey: { node: { colors: ['#1e293b', '#6366f1', '#10b981', '#f59e0b', '#ef4444'], label: { fontSize: 10, bold: true } } }
+                sankey: { node: { colors: ['#1e293b', '#6366f1', '#10b981', '#f59e0b', '#ef4444'], label: { fontSize: 9, bold: true } } }
             });
         }
 
-        async function deleteTransaction(id) { if (confirm("Delete permanently?")) { await supabaseClient.from('transactions').delete().eq('id', id); init(); } }
+        async function deleteTransaction(id) { if (confirm("Delete?")) { await supabaseClient.from('transactions').delete().eq('id', id); init(); } }
         google.charts.setOnLoadCallback(init);
     </script>
 </body>
