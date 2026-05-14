@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <title>FinanceFlow v7.8</title>
+    <title>FinanceFlow v8.0</title>
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
         .savings-row { background-color: rgba(240, 249, 255, 0.4); }
@@ -17,6 +17,7 @@
         .custom-scrollbar::-webkit-scrollbar { height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         
+        /* Calendar Styling for iPhone SE / Mobile */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
         .calendar-day { background-color: white; min-height: 55px; padding: 2px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
         .calendar-header { background-color: #f8fafc; text-align: center; padding: 6px 0; font-size: 9px; font-weight: 900; text-transform: uppercase; color: #94a3b8; }
@@ -24,12 +25,13 @@
         .cal-income { color: #10b981; font-size: 8px; font-weight: 800; }
         .cal-expense { color: #ef4444; font-size: 8px; font-weight: 800; }
         .not-current-month { background-color: #f8fafc; opacity: 0.5; }
-        .weekend { background-color: #f1f5f9; } /* Light grey for weekends */
+        .weekend { background-color: #f3f4f6; } /* Sundays and Saturdays light grey */
         .today-border { border: 2px solid #3b82f6 !important; border-radius: 4px; }
 
         @media (max-width: 380px) {
             .calendar-day { min-height: 48px; }
             .cal-income, .cal-expense { font-size: 7px; }
+            .history-text { font-size: 10px; }
         }
     </style>
 </head>
@@ -42,6 +44,7 @@
             </div>
         </header>
 
+        <!-- Totals Cards -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
             <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
                 <p class="text-[8px] font-black text-emerald-600 uppercase">Liquid Net</p>
@@ -62,6 +65,7 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Sidebar Form -->
             <div class="lg:col-span-1">
                 <div class="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 sticky top-4">
                     <h3 class="font-bold text-base mb-4 text-slate-800">New Entry</h3>
@@ -85,27 +89,30 @@
                 </div>
             </div>
 
+            <!-- Charts & Content -->
             <div class="lg:col-span-2 space-y-6">
+                <!-- Balance Trend -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-bold text-slate-700 text-[10px] uppercase tracking-widest">Liquid Trend</h3>
                         <select id="chartRange" onchange="calculateStats()" class="text-[10px] font-black border-none bg-slate-50 rounded-lg p-1 outline-none">
                             <option value="all">From Beginning</option>
-                            <option value="1">Last 1 Month</option>
-                            <option value="3">Last 3 Months</option>
-                            <option value="6">Last 6 Months</option>
-                            <option value="9">Last 9 Months</option>
-                            <option value="12">Last 1 Year</option>
+                            <option value="1">1 Month (from today)</option>
+                            <option value="3">3 Months (from today)</option>
+                            <option value="6">6 Months (from today)</option>
+                            <option value="9">9 Months (from today)</option>
+                            <option value="12">1 Year (from today)</option>
                         </select>
                     </div>
                     <div class="h-48 md:h-64"><canvas id="lineChart"></canvas></div>
                 </div>
 
+                <!-- Monthly Outlook Calendar -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex justify-between items-center mb-4">
-                        <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 font-bold">←</button>
+                        <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-full font-bold text-slate-400">←</button>
                         <h3 id="calendar-month-name" class="font-black text-slate-800 text-[11px] uppercase tracking-tighter"></h3>
-                        <button onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-full text-slate-400 font-bold">→</button>
+                        <button onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-full font-bold text-slate-400">→</button>
                     </div>
                     <div class="calendar-grid" id="calendar-body">
                         <div class="calendar-header">S</div><div class="calendar-header">M</div><div class="calendar-header">T</div>
@@ -113,8 +120,9 @@
                     </div>
                 </div>
 
+                <!-- History Table -->
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="p-4 border-b border-slate-50"><h3 class="font-bold text-slate-800 text-xs uppercase">History</h3></div>
+                    <div class="p-4 border-b border-slate-50"><h3 class="font-bold text-slate-800 text-xs uppercase">Transaction History</h3></div>
                     <div class="overflow-x-auto custom-scrollbar">
                         <table class="w-full text-left min-w-[500px]">
                             <tbody id="history-body" class="divide-y divide-slate-50"></tbody>
@@ -152,7 +160,6 @@
 
         let lineChart;
         let currentViewDate = new Date();
-        google.charts.load('current', {'packages':['sankey']});
         document.getElementById('header-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
         document.getElementById('date').valueAsDate = new Date();
 
@@ -211,21 +218,17 @@
         async function saveEdit() {
             const id = document.getElementById('edit_id').value;
             const payload = {
-                description: document.getElementById('edit_desc').value,
-                amount: parseFloat(document.getElementById('edit_amount').value),
-                type: document.getElementById('edit_type').value,
-                label_id: document.getElementById('edit_label').value,
-                is_savings: document.getElementById('edit_savings').checked,
-                created_at: new Date(document.getElementById('edit_date').value).toISOString()
+                description: document.getElementById('edit_desc').value, amount: parseFloat(document.getElementById('edit_amount').value),
+                type: document.getElementById('edit_type').value, label_id: document.getElementById('edit_label').value,
+                is_savings: document.getElementById('edit_savings').checked, created_at: new Date(document.getElementById('edit_date').value).toISOString()
             };
             await supabaseClient.from('transactions').update(payload).eq('id', id);
-            closeEditModal();
-            init();
+            closeEditModal(); calculateStats();
         }
 
         async function calculateStats() {
             const { data: transactions } = await supabaseClient.from('transactions').select('*, labels(*)').order('created_at', { ascending: true });
-            const now = new Date(); 
+            const today = new Date(); today.setHours(0,0,0,0);
             const rangeValue = document.getElementById('chartRange').value;
 
             let netToday = 0, futureTotal = 0, savingsPool = 0, runningBal = 0;
@@ -234,47 +237,41 @@
             
             historyBody.innerHTML = '';
 
-            // 1. Calculate Cutoff for Chart Range
-            let cutOffDate = null;
+            let limitDate = null;
             if (rangeValue !== 'all') {
-                cutOffDate = new Date();
-                cutOffDate.setMonth(cutOffDate.getMonth() - parseInt(rangeValue));
-                cutOffDate.setHours(0,0,0,0);
+                limitDate = new Date();
+                limitDate.setMonth(limitDate.getMonth() + parseInt(rangeValue));
             }
 
             transactions.forEach(t => {
                 const amt = parseFloat(t.amount);
                 const isInc = t.type === 'income';
                 const tDate = parseLocal(t.created_at);
-                const isFuture = tDate > now;
+                const isFuture = tDate > today;
                 const label = t.labels?.name || 'Misc';
                 const dateKey = tDate.toISOString().split('T')[0];
 
                 if (!dailyData[dateKey]) dailyData[dateKey] = { inc: 0, exp: 0 };
-                if (isInc) dailyData[dateKey].inc += amt;
-                else dailyData[dateKey].exp += amt;
+                if (isInc) dailyData[dateKey].inc += amt; else dailyData[dateKey].exp += amt;
 
                 if (t.is_savings) {
                     savingsPool += (isInc ? amt : -amt);
                 } else {
                     isInc ? runningBal += amt : runningBal -= amt;
-                    if (isFuture) futureTotal += (isInc ? amt : -amt); 
-                    else netToday += (isInc ? amt : -amt);
+                    if (isFuture) futureTotal += (isInc ? amt : -amt); else netToday += (isInc ? amt : -amt);
 
-                    // Range Logic: Only push if date is within selected range
-                    if (!cutOffDate || tDate >= cutOffDate) {
-                        timeline.push({ 
-                            x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), 
-                            y: runningBal, 
-                            isFuture 
-                        });
+                    // Trend Filtering: All OR (Today -> Today + Range)
+                    let inRange = (rangeValue === 'all') || (tDate >= today && tDate <= limitDate);
+                    if (inRange) {
+                        timeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningBal, isFuture });
                     }
                 }
 
                 historyBody.insertAdjacentHTML('afterbegin', `
                     <tr class="${isFuture ? 'future-row' : ''} ${t.is_savings ? 'savings-row' : ''}">
                         <td class="px-4 py-3 text-[9px] font-black text-slate-400">
-                            ${tDate.toLocaleDateString()}
+                            ${tDate.toLocaleDateString()}<br>
+                            ${isFuture ? '<span class="text-indigo-600 font-bold uppercase">[FUTURE]</span>' : '<span>[OK]</span>'}
                         </td>
                         <td class="px-4 py-3 text-left font-black text-xs ${isInc ? 'text-emerald-500' : 'text-rose-500'}">
                             $${amt.toLocaleString()}
@@ -287,7 +284,7 @@
                             <div class="flex items-center justify-end gap-3">
                                 ${isFuture ? `<button onclick="confirmTransaction('${t.id}')" class="text-indigo-600 font-black text-[9px]">CONFIRM</button>` : ''}
                                 <button onclick="openEditModal('${t.id}')" class="text-slate-400 text-[9px] font-black uppercase">Edit</button>
-                                <button onclick="deleteTransaction('${t.id}')" class="text-slate-300 text-lg">×</button>
+                                <button onclick="deleteTransaction('${t.id}')" class="text-slate-200 text-lg">×</button>
                             </div>
                         </td>
                     </tr>`);
@@ -312,7 +309,7 @@
             calStart.setDate(calStart.getDate() - firstDayOfMonth.getDay());
 
             const calBody = document.getElementById('calendar-body');
-            const headers = calBody.querySelectorAll('.calendar-header');
+            const headers = Array.from(calBody.querySelectorAll('.calendar-header'));
             calBody.innerHTML = '';
             headers.forEach(h => calBody.appendChild(h));
 
@@ -320,8 +317,10 @@
                 const dateObj = new Date(calStart);
                 dateObj.setDate(dateObj.getDate() + i);
                 const dateKey = dateObj.toISOString().split('T')[0];
+                const dayIdx = dateObj.getDay();
+                
                 const dayDiv = document.createElement('div');
-                dayDiv.className = `calendar-day ${dateObj.getMonth() !== month ? 'not-current-month' : ''} ${(dateObj.getDay() === 0 || dateObj.getDay() === 6) ? 'weekend' : ''} ${dateKey === todayStr ? 'today-border' : ''}`;
+                dayDiv.className = `calendar-day ${dateObj.getMonth() !== month ? 'not-current-month' : ''} ${(dayIdx === 0 || dayIdx === 6) ? 'weekend' : ''} ${dateKey === todayStr ? 'today-border' : ''}`;
                 
                 let content = `<span class="day-label">${dateObj.getDate()}</span>`;
                 if (dailyData[dateKey]) {
@@ -330,7 +329,7 @@
                 }
                 dayDiv.innerHTML = content;
                 calBody.appendChild(dayDiv);
-                if (i >= 34 && dateObj.getMonth() !== month && dateObj.getDay() === 6) break;
+                if (i >= 34 && dateObj.getMonth() !== month && dayIdx === 6) break;
             }
         }
 
@@ -338,23 +337,24 @@
             if (lineChart) lineChart.destroy();
             if (timeline.length === 0) return;
 
-            // Determine if line should be green (gain) or red (loss)
-            const startVal = timeline[0].y;
-            const endVal = timeline[timeline.length - 1].y;
-            const lineColor = endVal >= startVal ? '#10b981' : '#ef4444';
-
             lineChart = new Chart(document.getElementById('lineChart'), {
                 type: 'line',
                 data: {
                     labels: timeline.map(d => d.x),
                     datasets: [{
                         data: timeline.map(d => d.y),
-                        borderColor: lineColor,
-                        borderWidth: 2.5,
+                        borderWidth: 3,
                         tension: 0.3,
-                        pointRadius: 0, // Removed dots
-                        pointHitRadius: 10,
-                        fill: false
+                        pointRadius: 0,
+                        fill: false,
+                        segment: {
+                            borderColor: ctx => {
+                                const y0 = ctx.p0.parsed.y;
+                                const y1 = ctx.p1.parsed.y;
+                                return y1 >= y0 ? '#10b981' : '#ef4444'; // Green if balance went up, Red if down
+                            },
+                            borderDash: ctx => timeline[ctx.p1DataIndex]?.isFuture ? [5, 5] : undefined
+                        }
                     }]
                 },
                 options: { 
@@ -369,7 +369,7 @@
         }
 
         async function deleteTransaction(id) { if (confirm("Delete?")) { await supabaseClient.from('transactions').delete().eq('id', id); calculateStats(); } }
-        google.charts.setOnLoadCallback(init);
+        init();
     </script>
 </body>
 </html>
