@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <title>FinanceFlow v7.2</title>
+    <title>FinanceFlow v7.5</title>
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
         .savings-row { background-color: rgba(240, 249, 255, 0.4); }
@@ -17,7 +17,6 @@
         .custom-scrollbar::-webkit-scrollbar { height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         
-        /* Calendar Enhancements */
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
         .calendar-day { background-color: white; min-height: 55px; padding: 2px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
         .calendar-header { background-color: #f8fafc; text-align: center; padding: 6px 0; font-size: 9px; font-weight: 900; text-transform: uppercase; color: #94a3b8; }
@@ -28,10 +27,9 @@
         .weekend { background-color: #f9fafb; }
         .today-border { border: 2px solid #3b82f6 !important; border-radius: 4px; }
 
-        @media (max-width: 380px) { /* iPhone SE Optimization */
+        @media (max-width: 380px) {
             .calendar-day { min-height: 48px; }
             .cal-income, .cal-expense { font-size: 7px; }
-            h2 { font-size: 1.1rem !important; }
         }
     </style>
 </head>
@@ -44,6 +42,7 @@
             </div>
         </header>
 
+        <!-- Stats Grid -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
             <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
                 <p class="text-[8px] font-black text-emerald-600 uppercase">Liquid Net</p>
@@ -88,21 +87,23 @@
             </div>
 
             <div class="lg:col-span-2 space-y-6">
+                <!-- Trend -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-bold text-slate-700 text-[10px] uppercase tracking-widest">Liquid Trend</h3>
                         <select id="chartRange" onchange="calculateStats()" class="text-[10px] font-black border-none bg-slate-50 rounded-lg p-1 outline-none">
                             <option value="all">From Beginning</option>
-                            <option value="1">1 Month</option>
-                            <option value="3">3 Months</option>
-                            <option value="6">6 Months</option>
-                            <option value="9">9 Months</option>
-                            <option value="12">1 Year</option>
+                            <option value="1">1 Month (from today)</option>
+                            <option value="3">3 Months (from today)</option>
+                            <option value="6">6 Months (from today)</option>
+                            <option value="9">9 Months (from today)</option>
+                            <option value="12">1 Year (from today)</option>
                         </select>
                     </div>
                     <div class="h-48 md:h-64"><canvas id="lineChart"></canvas></div>
                 </div>
 
+                <!-- Calendar -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex justify-between items-center mb-4">
                         <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-full">←</button>
@@ -115,11 +116,13 @@
                     </div>
                 </div>
 
+                <!-- Sankey -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <h3 class="font-bold text-slate-700 mb-4 text-[10px] uppercase tracking-widest">Flow (Confirmed)</h3>
                     <div id="sankey_chart" style="height: 250px;"></div>
                 </div>
                 
+                <!-- History -->
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-4 border-b border-slate-50"><h3 class="font-bold text-slate-800 text-xs uppercase">History</h3></div>
                     <div class="overflow-x-auto custom-scrollbar">
@@ -132,7 +135,7 @@
         </div>
     </div>
 
-    <!-- Edit Modal stays same as previous version -->
+    <!-- Edit Modal -->
     <div id="editModal" class="modal">
         <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl">
             <h3 class="text-2xl font-black mb-6">Edit Entry</h3>
@@ -163,6 +166,12 @@
         document.getElementById('header-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
         document.getElementById('date').valueAsDate = new Date();
 
+        // Helper to parse dates without timezone shifts
+        function parseLocal(str) {
+            const parts = str.split('T')[0].split('-');
+            return new Date(parts[0], parts[1] - 1, parts[2]);
+        }
+
         async function init() {
             const { data: labels } = await supabaseClient.from('labels').select('*').order('name');
             const labelOptions = labels.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
@@ -186,7 +195,7 @@
         }
 
         async function confirmTransaction(id) {
-            const confirmedDate = new Date(Date.now() - 60000).toISOString();
+            const confirmedDate = new Date().toISOString();
             await supabaseClient.from('transactions').update({ created_at: confirmedDate }).eq('id', id);
             calculateStats();
         }
@@ -194,6 +203,39 @@
         function changeMonth(dir) {
             currentViewDate.setMonth(currentViewDate.getMonth() + dir);
             calculateStats();
+        }
+
+        async function openEditModal(id) {
+            const { data: t } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
+            document.getElementById('edit_id').value = t.id;
+            document.getElementById('edit_date').value = t.created_at.split('T')[0];
+            document.getElementById('edit_desc').value = t.description;
+            document.getElementById('edit_amount').value = t.amount;
+            document.getElementById('edit_type').value = t.type;
+            document.getElementById('edit_label').value = t.label_id;
+            document.getElementById('edit_savings').checked = t.is_savings;
+            document.getElementById('editModal').classList.add('active');
+            document.body.classList.add('modal-active');
+        }
+
+        function closeEditModal() { 
+            document.getElementById('editModal').classList.remove('active'); 
+            document.body.classList.remove('modal-active');
+        }
+
+        async function saveEdit() {
+            const id = document.getElementById('edit_id').value;
+            const payload = {
+                description: document.getElementById('edit_desc').value,
+                amount: parseFloat(document.getElementById('edit_amount').value),
+                type: document.getElementById('edit_type').value,
+                label_id: document.getElementById('edit_label').value,
+                is_savings: document.getElementById('edit_savings').checked,
+                created_at: new Date(document.getElementById('edit_date').value).toISOString()
+            };
+            await supabaseClient.from('transactions').update(payload).eq('id', id);
+            closeEditModal();
+            init();
         }
 
         async function calculateStats() {
@@ -210,10 +252,11 @@
             transactions.forEach(t => {
                 const amt = parseFloat(t.amount);
                 const isInc = t.type === 'income';
-                const tDate = new Date(t.created_at);
+                const tDate = parseLocal(t.created_at); // Fixed Date Parsing
                 const isFuture = tDate > now;
                 const label = t.labels?.name || 'Misc';
 
+                // Map daily data for calendar
                 const dateKey = tDate.toISOString().split('T')[0];
                 if (!dailyData[dateKey]) dailyData[dateKey] = { inc: 0, exp: 0 };
                 if (isInc) dailyData[dateKey].inc += amt;
@@ -230,7 +273,7 @@
                         else sankeyRows.push(['Active Income', label, amt]);
                     }
 
-                    // Range Logic for Chart
+                    // Strict Range Logic
                     let includeInChart = true;
                     if (rangeValue !== 'all') {
                         const cutOff = new Date();
@@ -240,22 +283,26 @@
                     if (includeInChart) timeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningBal, isFuture });
                 }
 
+                // Updated History Row: Swapped Amount & Desc + Added Edit Button
                 historyBody.insertAdjacentHTML('afterbegin', `
                     <tr class="${isFuture ? 'future-row' : ''} ${t.is_savings ? 'savings-row' : ''}">
                         <td class="px-4 py-3 text-[9px] font-black text-slate-400">
                             ${tDate.toLocaleDateString()}<br>
                             ${isFuture ? '<span class="text-indigo-600">[FUTURE]</span>' : '<span>[OK]</span>'}
                         </td>
+                        <td class="px-4 py-3 text-left font-black text-xs ${isInc ? 'text-emerald-500' : 'text-rose-500'}">
+                            $${amt.toLocaleString()}
+                        </td>
                         <td class="px-4 py-3">
                             <div class="font-bold text-slate-800 text-xs">${t.description}</div>
                             <div class="text-[8px] uppercase font-black text-slate-400">${label}</div>
                         </td>
-                        <td class="px-4 py-3 text-right font-black text-xs ${isInc ? 'text-emerald-500' : 'text-rose-500'}">
-                            $${amt.toLocaleString()}
-                        </td>
                         <td class="px-4 py-3 text-right">
-                            ${isFuture ? `<button onclick="confirmTransaction('${t.id}')" class="text-indigo-600 font-black text-[9px] mr-2">CONFIRM</button>` : ''}
-                            <button onclick="deleteTransaction('${t.id}')" class="text-slate-300 text-lg">×</button>
+                            <div class="flex items-center justify-end gap-3">
+                                ${isFuture ? `<button onclick="confirmTransaction('${t.id}')" class="text-indigo-600 font-black text-[9px]">CONFIRM</button>` : ''}
+                                <button onclick="openEditModal('${t.id}')" class="text-slate-400 hover:text-slate-800 text-[9px] font-black uppercase">Edit</button>
+                                <button onclick="deleteTransaction('${t.id}')" class="text-slate-300 text-lg">×</button>
+                            </div>
                         </td>
                     </tr>`);
             });
@@ -293,9 +340,14 @@
             for (let i = 0; i < 42; i++) {
                 const dateObj = new Date(calStart);
                 dateObj.setDate(dateObj.getDate() + i);
-                const dateKey = dateObj.toISOString().split('T')[0];
-                const dayIdx = dateObj.getDay();
                 
+                // Use manual format to match dailyData keys perfectly
+                const y = dateObj.getFullYear();
+                const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const d = String(dateObj.getDate()).padStart(2, '0');
+                const dateKey = `${y}-${m}-${d}`;
+
+                const dayIdx = dateObj.getDay();
                 const dayDiv = document.createElement('div');
                 dayDiv.className = 'calendar-day';
                 if (dateObj.getMonth() !== month) dayDiv.classList.add('not-current-month');
@@ -304,13 +356,12 @@
                 
                 let content = `<span class="day-label">${dateObj.getDate()}</span>`;
                 if (dailyData[dateKey]) {
-                    if (dailyData[dateKey].inc > 0) content += `<span class="cal-income">${dailyData[dateKey].inc.toLocaleString()}</span>`;
-                    if (dailyData[dateKey].exp > 0) content += `<span class="cal-expense">${dailyData[dateKey].exp.toLocaleString()}</span>`;
+                    if (dailyData[dateKey].inc > 0) content += `<span class="cal-income">${Math.round(dailyData[dateKey].inc).toLocaleString()}</span>`;
+                    if (dailyData[dateKey].exp > 0) content += `<span class="cal-expense">${Math.round(dailyData[dateKey].exp).toLocaleString()}</span>`;
                 }
                 dayDiv.innerHTML = content;
                 calBody.appendChild(dayDiv);
                 
-                // Break if we've filled the month and finished the week
                 if (i >= 34 && dateObj.getMonth() !== month && dayIdx === 6) break;
             }
         }
