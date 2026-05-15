@@ -243,7 +243,7 @@
                 const tDate = parseLocal(t.created_at);
                 const isFuture = tDate > today;
                 const label = t.labels?.name || 'Misc';
-                const dateKey = tDate.toISOString().split('T')[0];
+                const dateKey = tDate.getFullYear() + '-' + String(tDate.getMonth() + 1).padStart(2, '0') + '-' + String(tDate.getDate()).padStart(2, '0');
 
                 if (!dailyData[dateKey]) dailyData[dateKey] = { inc: 0, exp: 0 };
                 if (isInc) dailyData[dateKey].inc += amt; else dailyData[dateKey].exp += amt;
@@ -294,7 +294,9 @@
 
         function renderCalendar(dailyData) {
             const year = currentViewDate.getFullYear(), month = currentViewDate.getMonth();
-            const todayStr = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            
             document.getElementById('calendar-month-name').innerText = currentViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
             
             const firstDayOfMonth = new Date(year, month, 1);
@@ -309,7 +311,7 @@
             for (let i = 0; i < 42; i++) {
                 const dateObj = new Date(calStart);
                 dateObj.setDate(dateObj.getDate() + i);
-                const dateKey = dateObj.toISOString().split('T')[0];
+                const dateKey = dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
                 const dayIdx = dateObj.getDay();
                 
                 const dayDiv = document.createElement('div');
@@ -338,7 +340,7 @@
                         data: timeline.map(d => d.y),
                         borderWidth: 3,
                         tension: 0.3,
-                        pointRadius: 2, // Small radius to make clicking easier
+                        pointRadius: 2,
                         pointHoverRadius: 6,
                         pointBackgroundColor: 'transparent',
                         pointBorderColor: 'transparent',
@@ -350,7 +352,7 @@
                                 return y1 >= y0 ? '#10b981' : '#ef4444'; 
                             },
                             borderDash: ctx => timeline[ctx.p1DataIndex]?.isFuture ? [3, 3] : undefined,
-                            borderWidth: ctx => timeline[ctx.p1DataIndex]?.isFuture ? 1.5 : 3 // Thinner dotted line
+                            borderWidth: ctx => timeline[ctx.p1DataIndex]?.isFuture ? 1.5 : 3
                         }
                     }]
                 },
@@ -372,7 +374,7 @@
                         x: { ticks: { font: { size: 8 }, maxRotation: 0 }, grid: { display: false } },
                         y: { ticks: { font: { size: 8 } } }
                     },
-                    interaction: { mode: 'index', intersect: false } // Shows tooltip on proximity
+                    interaction: { mode: 'index', intersect: false }
                 }
             });
         }
