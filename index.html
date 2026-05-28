@@ -17,18 +17,19 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
-        .calendar-day { background-color: white; min-height: 55px; padding: 2px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
-        .calendar-header { background-color: #f8fafc; text-align: center; padding: 6px 0; font-size: 9px; font-weight: 900; text-transform: uppercase; color: #94a3b8; }
-        .day-label { font-size: 10px; font-weight: 700; color: #64748b; margin-bottom: 2px; }
-        .cal-income { color: #10b981; font-size: 8px; font-weight: 800; }
-        .cal-expense { color: #ef4444; font-size: 8px; font-weight: 800; }
+        .calendar-day { background-color: white; min-height: 60px; padding: 4px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+        .calendar-header { background-color: #f8fafc; text-align: center; padding: 6px 0; font-size: 11px; font-weight: 900; text-transform: uppercase; color: #94a3b8; }
+        .day-label { font-size: 13px; font-weight: 700; color: #64748b; margin-bottom: 2px; }
+        .cal-income { color: #10b981; font-size: 11px; font-weight: 800; }
+        .cal-expense { color: #ef4444; font-size: 11px; font-weight: 800; }
         .not-current-month { background-color: #f8fafc; opacity: 0.5; }
         .weekend { background-color: #f3f4f6; }
         .today-border { border: 2px solid #3b82f6 !important; border-radius: 4px; }
 
         @media (max-width: 380px) {
-            .calendar-day { min-height: 48px; }
-            .cal-income, .cal-expense { font-size: 7px; }
+            .calendar-day { min-height: 52px; }
+            .day-label { font-size: 11px; }
+            .cal-income, .cal-expense { font-size: 9px; }
         }
     </style>
 </head>
@@ -41,7 +42,6 @@
             </div>
         </header>
 
-        <!-- Stats Grid -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
             <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
                 <p class="text-[8px] font-black text-emerald-600 uppercase">Liquid Net</p>
@@ -62,7 +62,6 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Sidebar -->
             <div class="lg:col-span-1">
                 <div class="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 sticky top-4">
                     <h3 class="font-bold text-base mb-4 text-slate-800">New Entry</h3>
@@ -86,19 +85,16 @@
                 </div>
             </div>
 
-            <!-- Main Panel -->
             <div class="lg:col-span-2 space-y-6">
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
-                    <div class="flex justify-between items-center mb-4">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <h3 class="font-bold text-slate-700 text-[10px] uppercase tracking-widest">Liquid Trend</h3>
-                        <select id="chartRange" onchange="calculateStats()" class="text-[10px] font-black border-none bg-slate-50 rounded-lg p-1 outline-none">
-                            <option value="all">From Beginning</option>
-                            <option value="1">1 Month (from today)</option>
-                            <option value="3">3 Months (from today)</option>
-                            <option value="6">6 Months (from today)</option>
-                            <option value="9">9 Months (from today)</option>
-                            <option value="12">1 Year (from today)</option>
-                        </select>
+                        <div class="flex items-center gap-2 text-[10px] font-black">
+                            <span class="text-slate-400 uppercase">Start:</span>
+                            <input id="trendStart" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                            <span class="text-slate-400 uppercase">End:</span>
+                            <input id="trendEnd" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                        </div>
                     </div>
                     <div class="h-48 md:h-64"><canvas id="lineChart"></canvas></div>
                 </div>
@@ -115,6 +111,30 @@
                     </div>
                 </div>
 
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-slate-700 text-[10px] uppercase tracking-widest mb-4">Label Expense Lookup</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="block text-[9px] font-black uppercase text-slate-400 mb-1">Select Label</label>
+                            <select id="lookupLabel" onchange="calculateLabelExpense()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none"></select>
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-black uppercase text-slate-400 mb-1">Timeframe</label>
+                            <select id="lookupTimeframe" onchange="calculateLabelExpense()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none">
+                                <option value="all">All Time</option>
+                                <option value="this-month">This Month</option>
+                                <option value="last-30">Last 30 Days</option>
+                                <option value="last-90">Last 90 Days</option>
+                                <option value="this-year">This Year</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
+                        <p class="text-[9px] font-black text-slate-500 uppercase tracking-wider">Total Expenses</p>
+                        <h4 id="lookupResult" class="text-2xl font-black text-rose-600 mt-1">$0.00</h4>
+                    </div>
+                </div>
+
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-4 border-b border-slate-50"><h3 class="font-bold text-slate-800 text-xs uppercase">History</h3></div>
                     <div class="overflow-x-auto custom-scrollbar">
@@ -127,7 +147,6 @@
         </div>
     </div>
 
-    <!-- Edit Modal -->
     <div id="editModal" class="modal">
         <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl">
             <h3 class="text-2xl font-black mb-6">Edit Entry</h3>
@@ -153,6 +172,7 @@
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
         let lineChart;
+        let globalTransactionsCache = []; // Global cache for instant dynamic metric updates
         let currentViewDate = new Date();
         document.getElementById('header-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
         document.getElementById('date').valueAsDate = new Date();
@@ -167,6 +187,7 @@
             const labelOptions = labels.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
             document.getElementById('label_select').innerHTML = labelOptions;
             document.getElementById('edit_label').innerHTML = labelOptions;
+            document.getElementById('lookupLabel').innerHTML = labelOptions;
             calculateStats();
         }
 
@@ -220,22 +241,63 @@
             closeEditModal(); calculateStats();
         }
 
+        function calculateLabelExpense() {
+            const targetLabelId = document.getElementById('lookupLabel').value;
+            const timeframe = document.getElementById('lookupTimeframe').value;
+            
+            const now = new Date();
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            
+            let total = 0;
+
+            globalTransactionsCache.forEach(t => {
+                if (t.type !== 'expense' || String(t.label_id) !== String(targetLabelId)) return;
+
+                const tDate = parseLocal(t.created_at);
+                let passTimeframe = false;
+
+                if (timeframe === 'all') {
+                    passTimeframe = true;
+                } else if (timeframe === 'this-month') {
+                    passTimeframe = (tDate.getMonth() === today.getMonth() && tDate.getFullYear() === today.getFullYear());
+                } else if (timeframe === 'last-30') {
+                    const diffTime = Math.abs(today - tDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    passTimeframe = (diffDays <= 30 && tDate <= today);
+                } else if (timeframe === 'last-90') {
+                    const diffTime = Math.abs(today - tDate);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    passTimeframe = (diffDays <= 90 && tDate <= today);
+                } else if (timeframe === 'this-year') {
+                    passTimeframe = (tDate.getFullYear() === today.getFullYear());
+                }
+
+                if (passTimeframe) {
+                    total += parseFloat(t.amount);
+                }
+            });
+
+            document.getElementById('lookupResult').innerText = `$${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+
         async function calculateStats() {
             const { data: transactions } = await supabaseClient.from('transactions').select('*, labels(*)').order('created_at', { ascending: true });
+            globalTransactionsCache = transactions || [];
+            
             const today = new Date(); today.setHours(0,0,0,0);
-            const rangeValue = document.getElementById('chartRange').value;
+            
+            const startVal = document.getElementById('trendStart').value;
+            const endVal = document.getElementById('trendEnd').value;
+            let startDate = startVal ? new Date(startVal) : null;
+            let endDate = endVal ? new Date(endVal) : null;
+            if (startDate) startDate.setHours(0,0,0,0);
+            if (endDate) endDate.setHours(23,59,59,999);
 
             let netToday = 0, futureTotal = 0, savingsPool = 0, runningBal = 0;
             const timeline = [], historyBody = document.getElementById('history-body');
             const dailyData = {};
             
             historyBody.innerHTML = '';
-
-            let limitDate = null;
-            if (rangeValue !== 'all') {
-                limitDate = new Date();
-                limitDate.setMonth(limitDate.getMonth() + parseInt(rangeValue));
-            }
 
             transactions.forEach(t => {
                 const amt = parseFloat(t.amount);
@@ -254,7 +316,10 @@
                     isInc ? runningBal += amt : runningBal -= amt;
                     if (isFuture) futureTotal += (isInc ? amt : -amt); else netToday += (isInc ? amt : -amt);
 
-                    let inRange = (rangeValue === 'all') || (tDate >= today && tDate <= limitDate);
+                    let inRange = true;
+                    if (startDate && tDate < startDate) inRange = false;
+                    if (endDate && tDate > endDate) inRange = false;
+
                     if (inRange) {
                         timeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningBal, isFuture });
                     }
@@ -290,6 +355,7 @@
 
             updateLineChart(timeline);
             renderCalendar(dailyData);
+            calculateLabelExpense();
         }
 
         function renderCalendar(dailyData) {
@@ -330,7 +396,12 @@
 
         function updateLineChart(timeline) {
             if (lineChart) lineChart.destroy();
-            if (timeline.length === 0) return;
+            if (timeline.length === 0) {
+                // Clear out canvas if no items found in range
+                const ctx = document.getElementById('lineChart').getContext('2d');
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                return;
+            }
 
             lineChart = new Chart(document.getElementById('lineChart'), {
                 type: 'line',
