@@ -100,6 +100,19 @@
                 </div>
 
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
+                        <h3 class="font-bold text-sky-600 text-[10px] uppercase tracking-widest">Savings Trend</h3>
+                        <div class="flex items-center gap-2 text-[10px] font-black">
+                            <span class="text-slate-400 uppercase">Start:</span>
+                            <input id="savingsStart" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                            <span class="text-slate-400 uppercase">End:</span>
+                            <input id="savingsEnd" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                        </div>
+                    </div>
+                    <div class="h-48 md:h-64"><canvas id="savingsChart"></canvas></div>
+                </div>
+
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex justify-between items-center mb-4">
                         <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-full font-bold text-slate-400">←</button>
                         <h3 id="calendar-month-name" class="font-black text-slate-800 text-[11px] uppercase tracking-tighter"></h3>
@@ -172,7 +185,8 @@
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
         let lineChart;
-        let globalTransactionsCache = []; // Global cache for instant dynamic metric updates
+        let savingsChart;
+        let globalTransactionsCache = []; 
         let currentViewDate = new Date();
         document.getElementById('header-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
         document.getElementById('date').valueAsDate = new Date();
@@ -286,6 +300,7 @@
             
             const today = new Date(); today.setHours(0,0,0,0);
             
+            // Liquid parameters
             const startVal = document.getElementById('trendStart').value;
             const endVal = document.getElementById('trendEnd').value;
             let startDate = startVal ? new Date(startVal) : null;
@@ -293,8 +308,16 @@
             if (startDate) startDate.setHours(0,0,0,0);
             if (endDate) endDate.setHours(23,59,59,999);
 
-            let netToday = 0, futureTotal = 0, savingsPool = 0, runningBal = 0;
-            const timeline = [], historyBody = document.getElementById('history-body');
+            // Savings parameters
+            const savStartVal = document.getElementById('savingsStart').value;
+            const savEndVal = document.getElementById('savingsEnd').value;
+            let savStartDate = savStartVal ? new Date(savStartVal) : null;
+            let savEndDate = savEndVal ? new Date(savEndVal) : null;
+            if (savStartDate) savStartDate.setHours(0,0,0,0);
+            if (savEndDate) savEndDate.setHours(23,59,59,999);
+
+            let netToday = 0, futureTotal = 0, savingsPool = 0, runningBal = 0, runningSavingsBal = 0;
+            const liquidTimeline = [], savingsTimeline = [], historyBody = document.getElementById('history-body');
             const dailyData = {};
             
             historyBody.innerHTML = '';
@@ -312,16 +335,25 @@
 
                 if (t.is_savings) {
                     savingsPool += (isInc ? amt : -amt);
+                    runningSavingsBal += (isInc ? amt : -amt);
+
+                    let inSavingsRange = true;
+                    if (savStartDate && tDate < savStartDate) inSavingsRange = false;
+                    if (savEndDate && tDate > savEndDate) inSavingsRange = false;
+
+                    if (inSavingsRange) {
+                        savingsTimeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningSavingsBal, isFuture });
+                    }
                 } else {
                     isInc ? runningBal += amt : runningBal -= amt;
                     if (isFuture) futureTotal += (isInc ? amt : -amt); else netToday += (isInc ? amt : -amt);
 
-                    let inRange = true;
-                    if (startDate && tDate < startDate) inRange = false;
-                    if (endDate && tDate > endDate) inRange = false;
+                    let inLiquidRange = true;
+                    if (startDate && tDate < startDate) inLiquidRange = false;
+                    if (endDate && tDate > endDate) inLiquidRange = false;
 
-                    if (inRange) {
-                        timeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningBal, isFuture });
+                    if (inLiquidRange) {
+                        liquidTimeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningBal, isFuture });
                     }
                 }
 
@@ -353,7 +385,8 @@
             document.getElementById('future-total').innerText = `$${futureTotal.toLocaleString()}`;
             document.getElementById('prognosis').innerText = `$${(netToday + futureTotal).toLocaleString()}`;
 
-            updateLineChart(timeline);
+            updateLineChart(liquidTimeline);
+            updateSavingsChart(savingsTimeline);
             renderCalendar(dailyData);
             calculateLabelExpense();
         }
@@ -397,7 +430,6 @@
         function updateLineChart(timeline) {
             if (lineChart) lineChart.destroy();
             if (timeline.length === 0) {
-                // Clear out canvas if no items found in range
                 const ctx = document.getElementById('lineChart').getContext('2d');
                 ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
                 return;
@@ -438,6 +470,61 @@
                             displayColors: false,
                             callbacks: {
                                 label: (ctx) => ` Balance: $${ctx.parsed.y.toLocaleString()}`
+                            }
+                        }
+                    },
+                    scales: { 
+                        x: { ticks: { font: { size: 8 }, maxRotation: 0 }, grid: { display: false } },
+                        y: { ticks: { font: { size: 8 } } }
+                    },
+                    interaction: { mode: 'index', intersect: false }
+                }
+            });
+        }
+
+        function updateSavingsChart(timeline) {
+            if (savingsChart) savingsChart.destroy();
+            if (timeline.length === 0) {
+                const ctx = document.getElementById('savingsChart').getContext('2d');
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                return;
+            }
+
+            savingsChart = new Chart(document.getElementById('savingsChart'), {
+                type: 'line',
+                data: {
+                    labels: timeline.map(d => d.x),
+                    datasets: [{
+                        data: timeline.map(d => d.y),
+                        borderWidth: 3,
+                        tension: 0.3,
+                        pointRadius: 2,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: 'transparent',
+                        pointBorderColor: 'transparent',
+                        fill: false,
+                        segment: {
+                            borderColor: ctx => {
+                                const y0 = ctx.p0.parsed.y;
+                                const y1 = ctx.p1.parsed.y;
+                                return y1 >= y0 ? '#0ea5e9' : '#38bdf8'; 
+                            },
+                            borderDash: ctx => timeline[ctx.p1DataIndex]?.isFuture ? [3, 3] : undefined,
+                            borderWidth: ctx => timeline[ctx.p1DataIndex]?.isFuture ? 1.5 : 3
+                        }
+                    }]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { size: 10 },
+                            bodyFont: { size: 12, weight: 'bold' },
+                            displayColors: false,
+                            callbacks: {
+                                label: (ctx) => ` Savings: $${ctx.parsed.y.toLocaleString()}`
                             }
                         }
                     },
