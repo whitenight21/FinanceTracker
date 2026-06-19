@@ -6,7 +6,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <title>FinanceFlow v8.2</title>
+    <title>FinanceFlow v8.3</title>
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
         .savings-row { background-color: rgba(240, 249, 255, 0.4); }
@@ -42,10 +42,17 @@
             </div>
         </header>
 
+        <!-- Metric Top Bar -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
-            <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
-                <p class="text-[8px] font-black text-emerald-600 uppercase">Liquid Net</p>
-                <h2 id="net-today" class="text-base md:text-xl font-black text-emerald-800">$0</h2>
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                <div class="text-center">
+                    <p class="text-[8px] font-black text-emerald-600 uppercase">Liquid Net (Total)</p>
+                    <h2 id="net-today" class="text-base md:text-xl font-black text-emerald-800">$0</h2>
+                </div>
+                <div class="border-t border-slate-100 mt-2 pt-1 flex justify-around text-[10px] font-bold text-slate-500">
+                    <div>M: <span id="net-mathias" class="text-slate-800 font-black">$0</span></div>
+                    <div>J: <span id="net-julia" class="text-slate-800 font-black">$0</span></div>
+                </div>
             </div>
             <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
                 <p class="text-[8px] font-black text-sky-600 uppercase">Savings Pool</p>
@@ -62,6 +69,7 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Sidebar Form Container -->
             <div class="lg:col-span-1">
                 <div class="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 sticky top-4">
                     <h3 class="font-bold text-base mb-4 text-slate-800">New Entry</h3>
@@ -69,6 +77,7 @@
                         <input id="date" type="date" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm outline-none">
                         <input id="desc" type="text" placeholder="Description" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm outline-none">
                         <input id="amount" type="number" placeholder="0.00" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm font-bold outline-none">
+                        
                         <div class="grid grid-cols-2 gap-2">
                             <select id="type" class="border-slate-200 border p-2.5 rounded-xl text-sm bg-slate-50 font-semibold">
                                 <option value="income">Income (+)</option>
@@ -76,6 +85,15 @@
                             </select>
                             <select id="label_select" class="border-slate-200 border p-2.5 rounded-xl text-sm bg-slate-50 font-semibold"></select>
                         </div>
+
+                        <div>
+                            <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Wallet Owner</label>
+                            <select id="owner_select" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm bg-slate-50 font-bold text-slate-700 outline-none">
+                                <option value="Mathias">Mathias</option>
+                                <option value="Julia">Julia</option>
+                            </select>
+                        </div>
+
                         <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
                             <input id="is_savings" type="checkbox" class="w-4 h-4 accent-sky-500">
                             <label for="is_savings" class="text-[9px] font-black text-slate-500 uppercase">Mark as Savings</label>
@@ -85,7 +103,9 @@
                 </div>
             </div>
 
+            <!-- Content Container -->
             <div class="lg:col-span-2 space-y-6">
+                <!-- Liquid Trend Container -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <h3 class="font-bold text-slate-700 text-[10px] uppercase tracking-widest">Liquid Trend</h3>
@@ -99,6 +119,7 @@
                     <div class="h-48 md:h-64"><canvas id="lineChart"></canvas></div>
                 </div>
 
+                <!-- Savings Trend Container -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <h3 class="font-bold text-sky-600 text-[10px] uppercase tracking-widest">Savings Trend</h3>
@@ -112,6 +133,7 @@
                     <div class="h-48 md:h-64"><canvas id="savingsChart"></canvas></div>
                 </div>
 
+                <!-- Calendar Section -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex justify-between items-center mb-4">
                         <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-full font-bold text-slate-400">←</button>
@@ -124,6 +146,7 @@
                     </div>
                 </div>
 
+                <!-- Expense Lookup Tool -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <h3 class="font-bold text-slate-700 text-[10px] uppercase tracking-widest mb-4">Label Expense Lookup</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -148,6 +171,7 @@
                     </div>
                 </div>
 
+                <!-- Ledger History Table -->
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
                     <div class="p-4 border-b border-slate-50"><h3 class="font-bold text-slate-800 text-xs uppercase">History</h3></div>
                     <div class="overflow-x-auto custom-scrollbar">
@@ -160,16 +184,27 @@
         </div>
     </div>
 
+    <!-- Edit Modal Overlay -->
     <div id="editModal" class="modal">
         <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl">
             <h3 class="text-2xl font-black mb-6">Edit Entry</h3>
             <div class="space-y-4">
                 <input id="edit_id" type="hidden"><input id="edit_date" type="date" class="w-full border p-3 rounded-xl outline-none">
                 <input id="edit_desc" type="text" class="w-full border p-3 rounded-xl outline-none"><input id="edit_amount" type="number" class="w-full border p-3 rounded-xl outline-none font-bold">
+                
                 <div class="grid grid-cols-2 gap-2">
                     <select id="edit_type" class="border p-3 rounded-xl bg-slate-50"><option value="income">Income</option><option value="expense">Expense</option></select>
                     <select id="edit_label" class="border p-3 rounded-xl bg-slate-50"></select>
                 </div>
+
+                <div>
+                    <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Wallet Owner</label>
+                    <select id="edit_owner" class="w-full border p-3 rounded-xl bg-slate-50 font-bold text-slate-700 outline-none">
+                        <option value="Mathias">Mathias</option>
+                        <option value="Julia">Julia</option>
+                    </select>
+                </div>
+
                 <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl"><input id="edit_savings" type="checkbox" class="w-5 h-5"><label class="text-[10px] font-black uppercase text-slate-500">Savings</label></div>
                 <div class="flex gap-2 pt-4">
                     <button onclick="closeEditModal()" class="flex-1 py-3 font-bold text-slate-400">Cancel</button>
@@ -211,6 +246,7 @@
                 amount: parseFloat(document.getElementById('amount').value),
                 type: document.getElementById('type').value,
                 label_id: document.getElementById('label_select').value,
+                owner: document.getElementById('owner_select').value,
                 is_savings: document.getElementById('is_savings').checked,
                 created_at: new Date(document.getElementById('date').value).toISOString()
             };
@@ -237,6 +273,7 @@
             document.getElementById('edit_amount').value = t.amount;
             document.getElementById('edit_type').value = t.type;
             document.getElementById('edit_label').value = t.label_id;
+            document.getElementById('edit_owner').value = t.owner || 'Mathias';
             document.getElementById('edit_savings').checked = t.is_savings;
             document.getElementById('editModal').classList.add('active');
             document.body.classList.add('modal-active');
@@ -249,6 +286,7 @@
             const payload = {
                 description: document.getElementById('edit_desc').value, amount: parseFloat(document.getElementById('edit_amount').value),
                 type: document.getElementById('edit_type').value, label_id: document.getElementById('edit_label').value,
+                owner: document.getElementById('edit_owner').value,
                 is_savings: document.getElementById('edit_savings').checked, created_at: new Date(document.getElementById('edit_date').value).toISOString()
             };
             await supabaseClient.from('transactions').update(payload).eq('id', id);
@@ -258,15 +296,12 @@
         function calculateLabelExpense() {
             const targetLabelId = document.getElementById('lookupLabel').value;
             const timeframe = document.getElementById('lookupTimeframe').value;
-            
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            
             let total = 0;
 
             globalTransactionsCache.forEach(t => {
                 if (t.type !== 'expense' || String(t.label_id) !== String(targetLabelId)) return;
-
                 const tDate = parseLocal(t.created_at);
                 let passTimeframe = false;
 
@@ -286,11 +321,8 @@
                     passTimeframe = (tDate.getFullYear() === today.getFullYear());
                 }
 
-                if (passTimeframe) {
-                    total += parseFloat(t.amount);
-                }
+                if (passTimeframe) total += parseFloat(t.amount);
             });
-
             document.getElementById('lookupResult').innerText = `$${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         }
 
@@ -300,7 +332,6 @@
             
             const today = new Date(); today.setHours(0,0,0,0);
             
-            // Liquid parameters
             const startVal = document.getElementById('trendStart').value;
             const endVal = document.getElementById('trendEnd').value;
             let startDate = startVal ? new Date(startVal) : null;
@@ -308,7 +339,6 @@
             if (startDate) startDate.setHours(0,0,0,0);
             if (endDate) endDate.setHours(23,59,59,999);
 
-            // Savings parameters
             const savStartVal = document.getElementById('savingsStart').value;
             const savEndVal = document.getElementById('savingsEnd').value;
             let savStartDate = savStartVal ? new Date(savStartVal) : null;
@@ -316,7 +346,8 @@
             if (savStartDate) savStartDate.setHours(0,0,0,0);
             if (savEndDate) savEndDate.setHours(23,59,59,999);
 
-            let netToday = 0, futureTotal = 0, savingsPool = 0, runningBal = 0, runningSavingsBal = 0;
+            let netToday = 0, netMathias = 0, netJulia = 0;
+            let futureTotal = 0, savingsPool = 0, runningBal = 0, runningSavingsBal = 0;
             const liquidTimeline = [], savingsTimeline = [], historyBody = document.getElementById('history-body');
             const dailyData = {};
             
@@ -325,17 +356,19 @@
             transactions.forEach(t => {
                 const amt = parseFloat(t.amount);
                 const isInc = t.type === 'income';
+                const changeValue = isInc ? amt : -amt;
                 const tDate = parseLocal(t.created_at);
                 const isFuture = tDate > today;
                 const label = t.labels?.name || 'Misc';
+                const owner = t.owner || 'Mathias';
                 const dateKey = tDate.getFullYear() + '-' + String(tDate.getMonth() + 1).padStart(2, '0') + '-' + String(tDate.getDate()).padStart(2, '0');
 
                 if (!dailyData[dateKey]) dailyData[dateKey] = { inc: 0, exp: 0 };
                 if (isInc) dailyData[dateKey].inc += amt; else dailyData[dateKey].exp += amt;
 
                 if (t.is_savings) {
-                    savingsPool += (isInc ? amt : -amt);
-                    runningSavingsBal += (isInc ? amt : -amt);
+                    savingsPool += changeValue;
+                    runningSavingsBal += changeValue;
 
                     let inSavingsRange = true;
                     if (savStartDate && tDate < savStartDate) inSavingsRange = false;
@@ -345,8 +378,14 @@
                         savingsTimeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningSavingsBal, isFuture });
                     }
                 } else {
-                    isInc ? runningBal += amt : runningBal -= amt;
-                    if (isFuture) futureTotal += (isInc ? amt : -amt); else netToday += (isInc ? amt : -amt);
+                    runningBal += changeValue;
+                    if (isFuture) {
+                        futureTotal += changeValue;
+                    } else {
+                        netToday += changeValue;
+                        if (owner === 'Mathias') netMathias += changeValue;
+                        if (owner === 'Julia') netJulia += changeValue;
+                    }
 
                     let inLiquidRange = true;
                     if (startDate && tDate < startDate) inLiquidRange = false;
@@ -368,7 +407,7 @@
                         </td>
                         <td class="px-4 py-3">
                             <div class="font-bold text-slate-800 text-xs">${t.description}</div>
-                            <div class="text-[8px] uppercase font-black text-slate-400">${label}</div>
+                            <div class="text-[8px] uppercase font-black text-slate-400">${label} • <span class="text-slate-600">${owner}</span></div>
                         </td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
@@ -381,6 +420,8 @@
             });
 
             document.getElementById('net-today').innerText = `$${netToday.toLocaleString()}`;
+            document.getElementById('net-mathias').innerText = `$${netMathias.toLocaleString()}`;
+            document.getElementById('net-julia').innerText = `$${netJulia.toLocaleString()}`;
             document.getElementById('savings-pool').innerText = `$${savingsPool.toLocaleString()}`;
             document.getElementById('future-total').innerText = `$${futureTotal.toLocaleString()}`;
             document.getElementById('prognosis').innerText = `$${(netToday + futureTotal).toLocaleString()}`;
@@ -537,7 +578,7 @@
             });
         }
 
-        async function deleteTransaction(id) { if (confirm("Delete?")) { await supabaseClient.from('transactions').delete().eq('id', id); calculateStats(); } }
+        async function deleteTransaction(id) { if (confirm("Delete Transaction?")) { await supabaseClient.from('transactions').delete().eq('id', id); calculateStats(); } }
         init();
     </script>
 </body>
