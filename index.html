@@ -42,7 +42,6 @@
             </div>
         </header>
 
-        <!-- Metric Top Bar -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
             <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
                 <div class="text-center">
@@ -69,7 +68,6 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Sidebar Form Container -->
             <div class="lg:col-span-1">
                 <div class="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 sticky top-4">
                     <h3 class="font-bold text-base mb-4 text-slate-800">New Entry</h3>
@@ -103,9 +101,7 @@
                 </div>
             </div>
 
-            <!-- Content Container -->
             <div class="lg:col-span-2 space-y-6">
-                <!-- Liquid Trend Container -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <h3 class="font-bold text-slate-700 text-[10px] uppercase tracking-widest">Liquid Trend</h3>
@@ -119,7 +115,6 @@
                     <div class="h-48 md:h-64"><canvas id="lineChart"></canvas></div>
                 </div>
 
-                <!-- Savings Trend Container -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <h3 class="font-bold text-sky-600 text-[10px] uppercase tracking-widest">Savings Trend</h3>
@@ -133,7 +128,6 @@
                     <div class="h-48 md:h-64"><canvas id="savingsChart"></canvas></div>
                 </div>
 
-                <!-- Calendar Section -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex justify-between items-center mb-4">
                         <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-full font-bold text-slate-400">←</button>
@@ -146,7 +140,6 @@
                     </div>
                 </div>
 
-                <!-- Expense Lookup Tool -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <h3 class="font-bold text-slate-700 text-[10px] uppercase tracking-widest mb-4">Label Expense Lookup</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -171,22 +164,28 @@
                     </div>
                 </div>
 
-                <!-- Ledger History Table -->
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                        <h3 class="font-bold text-slate-800 text-xs uppercase">History</h3>
-                        
-                        <!-- History Filters Context Strip -->
-                        <div class="flex flex-wrap items-center gap-2 text-[10px] font-black w-full sm:w-auto">
-                            <select id="history_label_filter" onchange="renderFilteredHistory()" class="bg-slate-50 border border-slate-100 rounded-lg p-1 text-slate-700 outline-none">
-                                <option value="all">All Labels</option>
-                            </select>
-                            <span class="text-slate-400 uppercase ml-1">From:</span>
-                            <input id="historyStart" type="date" onchange="renderFilteredHistory()" class="bg-slate-50 border border-slate-100 rounded-lg p-1 outline-none text-slate-700">
-                            <span class="text-slate-400 uppercase">To:</span>
-                            <input id="historyEnd" type="date" onchange="renderFilteredHistory()" class="bg-slate-50 border border-slate-100 rounded-lg p-1 outline-none text-slate-700">
+                    <div class="p-4 border-b border-slate-100">
+                        <h3 class="font-bold text-slate-800 text-xs uppercase">Ledger History</h3>
+                    </div>
+                    
+                    <div class="bg-slate-100 p-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-slate-200">
+                        <div class="w-full md:w-auto">
+                            <label class="block text-[8px] font-black uppercase text-slate-400 mb-0.5">Filter by Label</label>
+                            <select id="history_label_filter" onchange="renderFilteredHistory()" class="w-full md:w-48 bg-white border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700 outline-none"></select>
+                        </div>
+                        <div class="flex gap-2 w-full md:w-auto">
+                            <div class="flex-1">
+                                <label class="block text-[8px] font-black uppercase text-slate-400 mb-0.5">Start Date</label>
+                                <input id="historyStart" type="date" onchange="renderFilteredHistory()" class="w-full bg-white border border-slate-200 rounded-xl p-1.5 text-xs font-bold text-slate-700 outline-none">
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-[8px] font-black uppercase text-slate-400 mb-0.5">End Date</label>
+                                <input id="historyEnd" type="date" onchange="renderFilteredHistory()" class="w-full bg-white border border-slate-200 rounded-xl p-1.5 text-xs font-bold text-slate-700 outline-none">
+                            </div>
                         </div>
                     </div>
+
                     <div class="overflow-x-auto custom-scrollbar">
                         <table class="w-full text-left min-w-[500px]">
                             <tbody id="history-body" class="divide-y divide-slate-50"></tbody>
@@ -197,7 +196,6 @@
         </div>
     </div>
 
-    <!-- Edit Modal Overlay -->
     <div id="editModal" class="modal">
         <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl">
             <h3 class="text-2xl font-black mb-6">Edit Entry</h3>
@@ -246,12 +244,13 @@
 
         async function init() {
             const { data: labels } = await supabaseClient.from('labels').select('*').order('name');
-            const labelOptions = labels.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+            const labelOptions = labels ? labels.map(l => `<option value="${l.id}">${l.name}</option>`).join('') : '';
+            
             document.getElementById('label_select').innerHTML = labelOptions;
             document.getElementById('edit_label').innerHTML = labelOptions;
             document.getElementById('lookupLabel').innerHTML = labelOptions;
             
-            // Populate the history label filtration dropdown option stack
+            // Explicitly set the custom filter strip select stack
             document.getElementById('history_label_filter').innerHTML = '<option value="all">All Labels</option>' + labelOptions;
             
             calculateStats();
@@ -368,7 +367,7 @@
             const liquidTimeline = [], savingsTimeline = [];
             const dailyData = {};
 
-            transactions.forEach(t => {
+            globalTransactionsCache.forEach(t => {
                 const amt = parseFloat(t.amount);
                 const isInc = t.type === 'income';
                 const changeValue = isInc ? amt : -amt;
@@ -439,17 +438,14 @@
 
             const today = new Date(); today.setHours(0,0,0,0);
 
-            // Iterate backwards through cached global array to keep chronological visual history stack sequence layout
             for (let i = globalTransactionsCache.length - 1; i >= 0; i--) {
                 const t = globalTransactionsCache[i];
                 const tDate = parseLocal(t.created_at);
                 
-                // 1. Check Label constraints
                 if (targetLabelFilter !== 'all' && String(t.label_id) !== String(targetLabelFilter)) {
                     continue;
                 }
                 
-                // 2. Check Time Range constraints
                 if (startDate && tDate < startDate) continue;
                 if (endDate && tDate > endDate) continue;
 
