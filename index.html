@@ -72,7 +72,16 @@
                 <div class="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 sticky top-4">
                     <h3 class="font-bold text-base mb-4 text-slate-800">New Entry</h3>
                     <div class="space-y-3">
-                        <input id="date" type="date" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm outline-none">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Date</label>
+                                <input id="date" type="date" class="w-full border-slate-200 border p-2.5 rounded-xl text-xs outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Time</label>
+                                <input id="time" type="time" class="w-full border-slate-200 border p-2.5 rounded-xl text-xs outline-none">
+                            </div>
+                        </div>
                         <input id="desc" type="text" placeholder="Description" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm outline-none">
                         <input id="amount" type="number" placeholder="0.00" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm font-bold outline-none">
                         
@@ -200,8 +209,19 @@
         <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl">
             <h3 class="text-2xl font-black mb-6">Edit Entry</h3>
             <div class="space-y-4">
-                <input id="edit_id" type="hidden"><input id="edit_date" type="date" class="w-full border p-3 rounded-xl outline-none">
-                <input id="edit_desc" type="text" class="w-full border p-3 rounded-xl outline-none"><input id="edit_amount" type="number" class="w-full border p-3 rounded-xl outline-none font-bold">
+                <input id="edit_id" type="hidden">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Date</label>
+                        <input id="edit_date" type="date" class="w-full border p-3 rounded-xl outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Time</label>
+                        <input id="edit_time" type="time" class="w-full border p-3 rounded-xl outline-none text-sm">
+                    </div>
+                </div>
+                <input id="edit_desc" type="text" class="w-full border p-3 rounded-xl outline-none">
+                <input id="edit_amount" type="number" class="w-full border p-3 rounded-xl outline-none font-bold">
                 
                 <div class="grid grid-cols-2 gap-2">
                     <select id="edit_type" class="border p-3 rounded-xl bg-slate-50"><option value="income">Income</option><option value="expense">Expense</option></select>
@@ -234,12 +254,19 @@
         let savingsChart;
         let globalTransactionsCache = []; 
         let currentViewDate = new Date();
+        
+        // Setup initial default date and local time inputs
         document.getElementById('header-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-        document.getElementById('date').valueAsDate = new Date();
+        
+        const nowLocal = new Date();
+        document.getElementById('date').valueAsDate = nowLocal;
+        const currentHours = String(nowLocal.getHours()).padStart(2, '0');
+        const currentMinutes = String(nowLocal.getMinutes()).padStart(2, '0');
+        document.getElementById('time').value = `${currentHours}:${currentMinutes}`;
 
         function parseLocal(str) {
-            const parts = str.split('T')[0].split('-');
-            return new Date(parts[0], parts[1] - 1, parts[2]);
+            // Parses the ISO timestamp correctly into a local Date object
+            return new Date(str);
         }
 
         async function init() {
@@ -257,6 +284,12 @@
         }
 
         async function addTransaction() {
+            const dateVal = document.getElementById('date').value;
+            const timeVal = document.getElementById('time').value || '00:00';
+            
+            // Construct ISO String using the user's explicit local date and time input
+            const localDateTime = new Date(`${dateVal}T${timeVal}`);
+
             const payload = {
                 description: document.getElementById('desc').value,
                 amount: parseFloat(document.getElementById('amount').value),
@@ -264,10 +297,15 @@
                 label_id: document.getElementById('label_select').value,
                 owner: document.getElementById('owner_select').value,
                 is_savings: document.getElementById('is_savings').checked,
-                created_at: new Date(document.getElementById('date').value).toISOString()
+                created_at: localDateTime.toISOString()
             };
             await supabaseClient.from('transactions').insert([payload]);
-            document.getElementById('desc').value = ''; document.getElementById('amount').value = '';
+            document.getElementById('desc').value = ''; 
+            document.getElementById('amount').value = '';
+            
+            // Reset time to current moment
+            const resetNow = new Date();
+            document.getElementById('time').value = `${String(resetNow.getHours()).padStart(2, '0')}:${String(resetNow.getMinutes()).padStart(2, '0')}`;
             init();
         }
 
@@ -284,7 +322,16 @@
         async function openEditModal(id) {
             const { data: t } = await supabaseClient.from('transactions').select('*').eq('id', id).single();
             document.getElementById('edit_id').value = t.id;
-            document.getElementById('edit_date').value = t.created_at.split('T')[0];
+            
+            const transDate = new Date(t.created_at);
+            const yyyy = transDate.getFullYear();
+            const mm = String(transDate.getMonth() + 1).padStart(2, '0');
+            const dd = String(transDate.getDate()).padStart(2, '0');
+            const hh = String(transDate.getHours()).padStart(2, '0');
+            const min = String(transDate.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('edit_date').value = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('edit_time').value = `${hh}:${min}`;
             document.getElementById('edit_desc').value = t.description;
             document.getElementById('edit_amount').value = t.amount;
             document.getElementById('edit_type').value = t.type;
@@ -299,14 +346,22 @@
 
         async function saveEdit() {
             const id = document.getElementById('edit_id').value;
+            const dateVal = document.getElementById('edit_date').value;
+            const timeVal = document.getElementById('edit_time').value || '00:00';
+            const localDateTime = new Date(`${dateVal}T${timeVal}`);
+
             const payload = {
-                description: document.getElementById('edit_desc').value, amount: parseFloat(document.getElementById('edit_amount').value),
-                type: document.getElementById('edit_type').value, label_id: document.getElementById('edit_label').value,
+                description: document.getElementById('edit_desc').value, 
+                amount: parseFloat(document.getElementById('edit_amount').value),
+                type: document.getElementById('edit_type').value, 
+                label_id: document.getElementById('edit_label').value,
                 owner: document.getElementById('edit_owner').value,
-                is_savings: document.getElementById('edit_savings').checked, created_at: new Date(document.getElementById('edit_date').value).toISOString()
+                is_savings: document.getElementById('edit_savings').checked, 
+                created_at: localDateTime.toISOString()
             };
             await supabaseClient.from('transactions').update(payload).eq('id', id);
-            closeEditModal(); calculateStats();
+            closeEditModal(); 
+            calculateStats();
         }
 
         function calculateLabelExpense() {
@@ -455,11 +510,15 @@
                 const labelName = t.labels?.name || 'Misc';
                 const owner = t.owner || 'Mathias';
 
+                // Format Time as HH:MM
+                const timeString = tDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
                 historyBody.insertAdjacentHTML('beforeend', `
                     <tr class="${isFuture ? 'future-row' : ''} ${t.is_savings ? 'savings-row' : ''}">
-                        <td class="px-4 py-3 text-[9px] font-black text-slate-400">
+                        <td class="px-4 py-3 text-[9px] font-black text-slate-400 leading-tight">
                             ${tDate.toLocaleDateString()}<br>
-                            ${isFuture ? '<span class="text-indigo-600 font-bold uppercase">[FUTURE]</span>' : '<span>[OK]</span>'}
+                            <span class="text-slate-500 font-bold">${timeString}</span><br>
+                            ${isFuture ? '<span class="text-indigo-600 font-bold uppercase text-[7px]">[FUTURE]</span>' : '<span class="text-emerald-600 font-bold uppercase text-[7px]">[OK]</span>'}
                         </td>
                         <td class="px-4 py-3 text-left font-black text-xs ${isInc ? 'text-emerald-500' : 'text-rose-500'}">
                             $${amt.toLocaleString()}
