@@ -265,7 +265,6 @@
         document.getElementById('time').value = `${currentHours}:${currentMinutes}`;
 
         function parseLocal(str) {
-            // Parses the ISO timestamp correctly into a local Date object
             return new Date(str);
         }
 
@@ -277,7 +276,6 @@
             document.getElementById('edit_label').innerHTML = labelOptions;
             document.getElementById('lookupLabel').innerHTML = labelOptions;
             
-            // Explicitly set the custom filter strip select stack
             document.getElementById('history_label_filter').innerHTML = '<option value="all">All Labels</option>' + labelOptions;
             
             calculateStats();
@@ -287,7 +285,6 @@
             const dateVal = document.getElementById('date').value;
             const timeVal = document.getElementById('time').value || '00:00';
             
-            // Construct ISO String using the user's explicit local date and time input
             const localDateTime = new Date(`${dateVal}T${timeVal}`);
 
             const payload = {
@@ -303,7 +300,6 @@
             document.getElementById('desc').value = ''; 
             document.getElementById('amount').value = '';
             
-            // Reset time to current moment
             const resetNow = new Date();
             document.getElementById('time').value = `${String(resetNow.getHours()).padStart(2, '0')}:${String(resetNow.getMinutes()).padStart(2, '0')}`;
             init();
@@ -402,6 +398,7 @@
             globalTransactionsCache = transactions || [];
             
             const today = new Date(); today.setHours(0,0,0,0);
+            const now = new Date();
             
             const startVal = document.getElementById('trendStart').value;
             const endVal = document.getElementById('trendEnd').value;
@@ -427,7 +424,7 @@
                 const isInc = t.type === 'income';
                 const changeValue = isInc ? amt : -amt;
                 const tDate = parseLocal(t.created_at);
-                const isFuture = tDate > today;
+                const isFuture = tDate > now;
                 const dateKey = tDate.getFullYear() + '-' + String(tDate.getMonth() + 1).padStart(2, '0') + '-' + String(tDate.getDate()).padStart(2, '0');
 
                 if (!dailyData[dateKey]) dailyData[dateKey] = { inc: 0, exp: 0 };
@@ -491,7 +488,7 @@
             if (startDate) startDate.setHours(0,0,0,0);
             if (endDate) endDate.setHours(23,59,59,999);
 
-            const today = new Date(); today.setHours(0,0,0,0);
+            const now = new Date();
 
             for (let i = globalTransactionsCache.length - 1; i >= 0; i--) {
                 const t = globalTransactionsCache[i];
@@ -506,11 +503,10 @@
 
                 const amt = parseFloat(t.amount);
                 const isInc = t.type === 'income';
-                const isFuture = tDate > today;
+                const isFuture = tDate > now;
                 const labelName = t.labels?.name || 'Misc';
                 const owner = t.owner || 'Mathias';
 
-                // Format Time as HH:MM
                 const timeString = tDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
                 historyBody.insertAdjacentHTML('beforeend', `
