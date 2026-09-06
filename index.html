@@ -6,7 +6,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <title>FinanceFlow v8.4</title>
+    <title>FinanceFlow v8.5</title>
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
         .savings-row { background-color: rgba(240, 249, 255, 0.4); }
@@ -70,25 +70,34 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-1">
                 <div class="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 sticky top-4">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-base text-slate-800">New Entry</h3>
-                        
-                        <!-- Toggle Voice Button -->
-                        <button id="voice-btn" onclick="toggleVoiceRecognition()" class="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded-xl font-bold text-xs transition-all">
-                            <svg id="mic-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
-                            </svg>
-                            <span id="voice-btn-text">AI Voice Input</span>
-                        </button>
-                    </div>
-
-                    <!-- Voice Processing Banner -->
-                    <div id="voice-status" class="hidden mb-3 p-3 bg-indigo-50 border border-indigo-100 text-indigo-800 rounded-2xl text-xs font-semibold flex flex-col gap-1">
-                        <div class="flex items-center justify-between">
-                            <span id="voice-status-title" class="font-black uppercase text-[9px] text-indigo-500">Voice Assistant</span>
-                            <span class="animate-pulse flex h-2 w-2 rounded-full bg-indigo-600"></span>
+                    <div class="flex flex-col gap-2 mb-4">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-base text-slate-800">New Entry</h3>
+                            
+                            <!-- Separate Voice Record Controls -->
+                            <div class="flex items-center gap-1.5">
+                                <button id="record-start-btn" onclick="startVoiceRecording()" class="flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all">
+                                    <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                                    </svg>
+                                    <span>Start Record</span>
+                                </button>
+                                
+                                <button id="record-stop-btn" onclick="stopVoiceAndParse()" disabled class="flex items-center gap-1 bg-slate-100 text-slate-400 border border-slate-200 px-2.5 py-1.5 rounded-xl font-bold text-xs cursor-not-allowed transition-all">
+                                    <span class="w-2 h-2 rounded-full bg-slate-300 inline-block"></span>
+                                    <span>Stop Record</span>
+                                </button>
+                            </div>
                         </div>
-                        <p id="voice-transcript" class="text-slate-600 italic">Listening... Speak now, then click "Stop & Fill".</p>
+
+                        <!-- Voice Processing Banner -->
+                        <div id="voice-status" class="hidden p-3 bg-indigo-50 border border-indigo-100 text-indigo-800 rounded-2xl text-xs font-semibold flex flex-col gap-1">
+                            <div class="flex items-center justify-between">
+                                <span id="voice-status-title" class="font-black uppercase text-[9px] text-indigo-500">Voice Recording</span>
+                                <span class="animate-pulse flex h-2 w-2 rounded-full bg-indigo-600"></span>
+                            </div>
+                            <p id="voice-transcript" class="text-slate-600 italic">Listening... Speak now.</p>
+                        </div>
                     </div>
 
                     <div class="space-y-3">
@@ -103,7 +112,7 @@
                             </div>
                         </div>
                         <input id="desc" type="text" placeholder="Description" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm outline-none">
-                        <input id="amount" type="number" placeholder="0.00" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm font-bold outline-none">
+                        <input id="amount" type="number" step="0.01" placeholder="0.00" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm font-bold outline-none">
                         
                         <div class="grid grid-cols-2 gap-2">
                             <select id="type" class="border-slate-200 border p-2.5 rounded-xl text-sm bg-slate-50 font-semibold">
@@ -241,7 +250,7 @@
                     </div>
                 </div>
                 <input id="edit_desc" type="text" class="w-full border p-3 rounded-xl outline-none">
-                <input id="edit_amount" type="number" class="w-full border p-3 rounded-xl outline-none font-bold">
+                <input id="edit_amount" type="number" step="0.01" class="w-full border p-3 rounded-xl outline-none font-bold">
                 
                 <div class="grid grid-cols-2 gap-2">
                     <select id="edit_type" class="border p-3 rounded-xl bg-slate-50"><option value="income">Income</option><option value="expense">Expense</option></select>
@@ -306,13 +315,13 @@
             initVoiceRecognition();
         }
 
-        // --- User-Friendly Interactive Voice Integration ---
+        // --- Voice Integration Logic ---
         function initVoiceRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognition) {
-                const btn = document.getElementById('voice-btn');
-                btn.disabled = true;
-                document.getElementById('voice-btn-text').innerText = "Voice Unsupported";
+                const startBtn = document.getElementById('record-start-btn');
+                startBtn.disabled = true;
+                startBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 return;
             }
 
@@ -325,13 +334,19 @@
                 isRecording = true;
                 recordedTranscript = "";
                 
-                const btn = document.getElementById('voice-btn');
-                btn.className = "flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded-xl font-bold text-xs shadow-md transition-all";
-                document.getElementById('voice-btn-text').innerText = "Stop & Fill";
+                // Toggle UI states
+                const startBtn = document.getElementById('record-start-btn');
+                startBtn.disabled = true;
+                startBtn.className = "flex items-center gap-1 bg-slate-100 text-slate-400 border border-slate-200 px-2.5 py-1.5 rounded-xl font-bold text-xs cursor-not-allowed transition-all";
                 
+                const stopBtn = document.getElementById('record-stop-btn');
+                stopBtn.disabled = false;
+                stopBtn.className = "flex items-center gap-1 bg-rose-500 hover:bg-rose-600 text-white px-2.5 py-1.5 rounded-xl font-bold text-xs shadow-md transition-all cursor-pointer";
+                stopBtn.querySelector('span:first-child').className = "w-2 h-2 rounded-full bg-white animate-ping inline-block";
+
                 const statusBox = document.getElementById('voice-status');
                 statusBox.classList.remove('hidden');
-                document.getElementById('voice-transcript').innerText = "Listening... speak your transaction.";
+                document.getElementById('voice-transcript').innerText = "Listening... Speak your entry.";
             };
 
             recognition.onresult = (event) => {
@@ -345,52 +360,137 @@
 
             recognition.onerror = (event) => {
                 console.error("Speech Recognition Error", event.error);
-                document.getElementById('voice-transcript').innerText = 'Voice recognition error. Please try again.';
-                stopVoiceRecording(false);
+                document.getElementById('voice-transcript').innerText = 'Voice recognition error. Try clicking Start Record again.';
+                resetVoiceUI();
             };
 
             recognition.onend = () => {
                 if (isRecording) {
-                    stopVoiceRecording(true);
+                    resetVoiceUI();
                 }
             };
         }
 
-        function toggleVoiceRecognition() {
+        function startVoiceRecording() {
             if (!recognition) return;
-            if (isRecording) {
-                stopVoiceRecording(true);
-            } else {
+            try {
                 recognition.start();
+            } catch (err) {
+                console.warn('Recognition already started or error', err);
             }
         }
 
-        function stopVoiceRecording(shouldParse) {
+        function stopVoiceAndParse() {
+            if (!recognition || !isRecording) return;
             isRecording = false;
-            if (recognition) recognition.stop();
+            recognition.stop();
+            
+            resetVoiceUI();
 
-            const btn = document.getElementById('voice-btn');
-            btn.className = "flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded-xl font-bold text-xs transition-all";
-            document.getElementById('voice-btn-text').innerText = "AI Voice Input";
-
-            if (shouldParse && recordedTranscript.trim().length > 0) {
+            if (recordedTranscript.trim().length > 0) {
                 parseAndFillForm(recordedTranscript);
-                document.getElementById('voice-transcript').innerText = "Form updated! Review the details below.";
+                document.getElementById('voice-status').classList.remove('hidden');
+                document.getElementById('voice-transcript').innerText = "Parsed into form! Edit if needed, then click 'Save Entry'.";
                 setTimeout(() => {
                     document.getElementById('voice-status').classList.add('hidden');
                 }, 4000);
-            } else {
-                document.getElementById('voice-status').classList.add('hidden');
             }
+        }
+
+        function resetVoiceUI() {
+            const startBtn = document.getElementById('record-start-btn');
+            startBtn.disabled = false;
+            startBtn.className = "flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer";
+
+            const stopBtn = document.getElementById('record-stop-btn');
+            stopBtn.disabled = true;
+            stopBtn.className = "flex items-center gap-1 bg-slate-100 text-slate-400 border border-slate-200 px-2.5 py-1.5 rounded-xl font-bold text-xs cursor-not-allowed transition-all";
+            stopBtn.querySelector('span:first-child').className = "w-2 h-2 rounded-full bg-slate-300 inline-block";
+        }
+
+        // Convert English words to numeric value for parsing numbers like "five hundred eighty" or "five eighty"
+        function wordToNumber(str) {
+            const smallWords = {
+                'zero':0, 'one':1, 'two':2, 'three':3, 'four':4, 'five':5, 'six':6, 'seven':7, 'eight':8, 'nine':9,
+                'ten':10, 'eleven':11, 'twelve':12, 'thirteen':13, 'fourteen':14, 'fifteen':15, 'sixteen':16,
+                'seventeen':17, 'eighteen':18, 'nineteen':19
+            };
+            const tensWords = {
+                'twenty':20, 'thirty':30, 'forty':40, 'fifty':50, 'sixty':60, 'seventy':70, 'eighty':80, 'ninety':90
+            };
+
+            const tokens = str.trim().split(/\s+/);
+            if (tokens.length === 0) return null;
+
+            // Check if standard digits exist first
+            const digitMatch = str.match(/\b\d+(\.\d+)?\b/);
+            if (digitMatch) return parseFloat(digitMatch[0]);
+
+            let total = 0;
+            let current = 0;
+            let hasHundred = false;
+
+            for (let i = 0; i < tokens.length; i++) {
+                const w = tokens[i].toLowerCase();
+
+                if (smallWords[w] !== undefined) {
+                    current += smallWords[w];
+                } else if (tensWords[w] !== undefined) {
+                    current += tensWords[w];
+                } else if (w === 'hundred') {
+                    hasHundred = true;
+                    current = (current === 0 ? 1 : current) * 100;
+                } else if (w === 'thousand') {
+                    total += (current === 0 ? 1 : current) * 1000;
+                    current = 0;
+                }
+            }
+            total += current;
+            return total > 0 ? total : null;
+        }
+
+        // Custom spoken monetary parsing
+        function parseSpokenAmount(text) {
+            const lower = text.toLowerCase();
+
+            // 1. Direct explicit decimal or digit numbers e.g. "$5.80", "5.80", "580", "580 dollars"
+            const explicitMatch = lower.match(/(?:\$|usd)?\s*(\d+(?:\.\d{1,2})?)\s*(?:dollars|bucks|cents|usd)?/i);
+
+            // 2. Specialized Word Patterns ("five eighty" vs "five hundred eighty")
+            // Pattern A: "five hundred eighty" -> "hundred" present -> 580
+            const hundredPattern = lower.match(/\b(one|two|three|four|five|six|seven|eight|nine)\s+hundred\s*(?:and\s*)?(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)?\s*(one|two|three|four|five|six|seven|eight|nine)?\b/);
+            if (hundredPattern) {
+                const val = wordToNumber(hundredPattern[0]);
+                if (val !== null) return val;
+            }
+
+            // Pattern B: Short money format e.g. "five eighty" -> $5.80, "twelve fifty" -> $12.50
+            const shortMoneyPattern = lower.match(/\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\s+(twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)\b/);
+            if (shortMoneyPattern && !lower.includes('hundred')) {
+                const dollars = wordToNumber(shortMoneyPattern[1]);
+                const cents = wordToNumber(shortMoneyPattern[2]);
+                if (dollars !== null && cents !== null) {
+                    return parseFloat(`${dollars}.${cents < 10 ? '0' + cents : cents}`);
+                }
+            }
+
+            // Pattern C: "five eighty" where second part is single digit e.g. "five fifty" -> $5.50
+            // Fallback word parsing if explicit numeric match exists
+            if (explicitMatch) {
+                return parseFloat(explicitMatch[1]);
+            }
+
+            // Generic Word to Number attempt
+            return wordToNumber(lower);
         }
 
         function parseAndFillForm(text) {
             const lower = text.toLowerCase();
             
-            // 1. Amount Extraction
-            const amountMatch = lower.match(/(?:\$|usd)?\s*(\d+(?:\.\d{1,2})?)\s*(?:dollars|bucks|usd)?/i);
-            if (amountMatch) {
-                document.getElementById('amount').value = parseFloat(amountMatch[1]);
+            // 1. Extract Amount with custom voice rules
+            const parsedAmount = parseSpokenAmount(text);
+            if (parsedAmount !== null && !isNaN(parsedAmount)) {
+                document.getElementById('amount').value = parsedAmount.toFixed(2);
             }
 
             // 2. Type (income vs expense)
@@ -423,7 +523,7 @@
 
             // 6. Description Cleanup
             let cleanDesc = text
-                .replace(/(?:spent|paid|added|got|for|dollars|bucks|\$|\d+(?:\.\d+)?|income|expense|mathias|julia|savings|saving)/gi, '')
+                .replace(/(?:spent|paid|added|got|for|dollars|bucks|\$|\d+(?:\.\d+)?|income|expense|mathias|julia|savings|saving|hundred|thousand|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|zero|one|two|three|four|five|six|seven|eight|nine)/gi, '')
                 .trim();
             
             document.getElementById('desc').value = cleanDesc.length > 0 ? cleanDesc : text;
