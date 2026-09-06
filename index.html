@@ -70,7 +70,23 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-1">
                 <div class="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 sticky top-4">
-                    <h3 class="font-bold text-base mb-4 text-slate-800">New Entry</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-base text-slate-800">New Entry</h3>
+                        <!-- AI Voice Input Button -->
+                        <button id="voice-btn" onclick="toggleVoiceRecognition()" class="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded-xl font-bold text-xs transition-all">
+                            <svg id="mic-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                            </svg>
+                            <span id="voice-btn-text">AI Voice</span>
+                        </button>
+                    </div>
+
+                    <!-- Voice Processing Status -->
+                    <div id="voice-status" class="hidden mb-3 p-2 bg-indigo-50 text-indigo-700 rounded-xl text-xs font-semibold flex items-center justify-between">
+                        <span id="voice-status-text">Listening...</span>
+                        <span class="animate-pulse flex h-2 w-2 rounded-full bg-indigo-600"></span>
+                    </div>
+
                     <div class="space-y-3">
                         <div class="grid grid-cols-2 gap-2">
                             <div>
@@ -253,7 +269,10 @@
         let lineChart;
         let savingsChart;
         let globalTransactionsCache = []; 
+        let globalLabelsCache = [];
         let currentViewDate = new Date();
+        let recognition = null;
+        let isListening = false;
         
         // Setup initial default date and local time inputs
         document.getElementById('header-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -270,6 +289,7 @@
 
         async function init() {
             const { data: labels } = await supabaseClient.from('labels').select('*').order('name');
+            globalLabelsCache = labels || [];
             const labelOptions = labels ? labels.map(l => `<option value="${l.id}">${l.name}</option>`).join('') : '';
             
             document.getElementById('label_select').innerHTML = labelOptions;
@@ -279,6 +299,117 @@
             document.getElementById('history_label_filter').innerHTML = '<option value="all">All Labels</option>' + labelOptions;
             
             calculateStats();
+            initVoiceRecognition();
+        }
+
+        // --- Voice AI Integration ---
+        function initVoiceRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                document.getElementById('voice-btn').disabled = true;
+                document.getElementById('voice-btn-text').innerText = "Voice Unavailable";
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                isListening = true;
+                const btn = document.getElementById('voice-btn');
+                btn.classList.add('bg-rose-50', 'text-rose-600', 'border-rose-200');
+                btn.classList.remove('bg-indigo-50', 'text-indigo-600', 'border-indigo-200');
+                document.getElementById('voice-btn-text').innerText = 'Listening...';
+                document.getElementById('voice-status').classList.remove('hidden');
+                document.getElementById('voice-status-text').innerText = 'Listening to speech...';
+            };
+
+            recognition.onresult = (event) => {
+                const speechResult = event.results[0][0].transcript;
+                document.getElementById('voice-status-text').innerText = `Processing: "${speechResult}"`;
+                parseVoiceInput(speechResult);
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech Recognition Error", event.error);
+                document.getElementById('voice-status-text').innerText = 'Voice error. Try again.';
+                setTimeout(stopVoiceListening, 2000);
+            };
+
+            recognition.onend = () => {
+                stopVoiceListening();
+            };
+        }
+
+        function toggleVoiceRecognition() {
+            if (!recognition) return;
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        function stopVoiceListening() {
+            isListening = false;
+            const btn = document.getElementById('voice-btn');
+            btn.classList.remove('bg-rose-50', 'text-rose-600', 'border-rose-200');
+            btn.classList.add('bg-indigo-50', 'text-indigo-600', 'border-indigo-200');
+            document.getElementById('voice-btn-text').innerText = 'AI Voice';
+            setTimeout(() => {
+                document.getElementById('voice-status').classList.add('hidden');
+            }, 3000);
+        }
+
+        function parseVoiceInput(text) {
+            const lower = text.toLowerCase();
+            
+            // 1. Extract Amount ($50, 50 dollars, 50.50, etc.)
+            const amountMatch = lower.match(/(?:\$|usd)?\s*(\d+(?:\.\d{1,2})?)\s*(?:dollars|bucks|usd)?/i);
+            if (amountMatch) {
+                document.getElementById('amount').value = parseFloat(amountMatch[1]);
+            }
+
+            // 2. Extract Type (income vs expense)
+            if (lower.includes('income') || lower.includes('earned') || lower.includes('received') || lower.includes('salary') || lower.includes('got paid') || lower.includes('deposit')) {
+                document.getElementById('type').value = 'income';
+            } else {
+                document.getElementById('type').value = 'expense';
+            }
+
+            // 3. Extract Owner
+            if (lower.includes('julia') || lower.includes("julia's")) {
+                document.getElementById('owner_select').value = 'Julia';
+            } else if (lower.includes('mathias') || lower.includes("mathias's")) {
+                document.getElementById('owner_select').value = 'Mathias';
+            }
+
+            // 4. Extract Savings
+            document.getElementById('is_savings').checked = lower.includes('saving') || lower.includes('savings');
+
+            // 5. Match Label
+            let matchedLabelId = null;
+            globalLabelsCache.forEach(label => {
+                if (lower.includes(label.name.toLowerCase())) {
+                    matchedLabelId = label.id;
+                }
+            });
+            if (matchedLabelId) {
+                document.getElementById('label_select').value = matchedLabelId;
+            }
+
+            // 6. Extract Description
+            let cleanDesc = text
+                .replace(/(?:spent|paid|added|got|for|dollars|bucks|\$|\d+(?:\.\d+)?|income|expense|mathias|julia|savings|saving)/gi, '')
+                .trim();
+            
+            document.getElementById('desc').value = cleanDesc.length > 0 ? cleanDesc : text;
+
+            // Automatically Trigger Save
+            document.getElementById('voice-status-text').innerText = 'Saving transaction...';
+            addTransaction();
         }
 
         async function addTransaction() {
