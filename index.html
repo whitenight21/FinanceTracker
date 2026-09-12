@@ -212,9 +212,19 @@
                     </div>
                     
                     <div class="bg-slate-100 p-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-slate-200">
-                        <div class="w-full md:w-auto">
-                            <label class="block text-[8px] font-black uppercase text-slate-400 mb-0.5">Filter by Label</label>
-                            <select id="history_label_filter" onchange="renderFilteredHistory()" class="w-full md:w-48 bg-white border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700 outline-none"></select>
+                        <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                            <div class="w-full sm:w-auto">
+                                <label class="block text-[8px] font-black uppercase text-slate-400 mb-0.5">Filter Owner</label>
+                                <select id="history_owner_filter" onchange="renderFilteredHistory()" class="w-full sm:w-36 bg-white border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700 outline-none">
+                                    <option value="all">All Owners</option>
+                                    <option value="Mathias">Mathias</option>
+                                    <option value="Julia">Julia</option>
+                                </select>
+                            </div>
+                            <div class="w-full sm:w-auto">
+                                <label class="block text-[8px] font-black uppercase text-slate-400 mb-0.5">Filter Label</label>
+                                <select id="history_label_filter" onchange="renderFilteredHistory()" class="w-full sm:w-40 bg-white border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700 outline-none"></select>
+                            </div>
                         </div>
                         <div class="flex gap-2 w-full md:w-auto">
                             <div class="flex-1">
@@ -644,6 +654,7 @@
             const historyBody = document.getElementById('history-body');
             historyBody.innerHTML = '';
             
+            const targetOwnerFilter = document.getElementById('history_owner_filter').value;
             const targetLabelFilter = document.getElementById('history_label_filter').value;
             const startVal = document.getElementById('historyStart').value;
             const endVal = document.getElementById('historyEnd').value;
@@ -658,6 +669,11 @@
             for (let i = globalTransactionsCache.length - 1; i >= 0; i--) {
                 const t = globalTransactionsCache[i];
                 const tDate = parseLocal(t.created_at);
+                const owner = t.owner || 'Mathias';
+
+                if (targetOwnerFilter !== 'all' && owner !== targetOwnerFilter) {
+                    continue;
+                }
                 
                 if (targetLabelFilter !== 'all' && String(t.label_id) !== String(targetLabelFilter)) {
                     continue;
@@ -670,7 +686,6 @@
                 const isInc = t.type === 'income';
                 const isFuture = tDate > now;
                 const labelName = t.labels?.name || 'Misc';
-                const owner = t.owner || 'Mathias';
 
                 const timeString = tDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
