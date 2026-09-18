@@ -207,8 +207,35 @@
                 </div>
 
                 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div class="p-4 border-b border-slate-100">
-                        <h3 class="font-bold text-slate-800 text-xs uppercase">Ledger History</h3>
+                    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                        <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Ledger History</h3>
+                        <button onclick="toggleExportPanel()" class="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-xl font-black text-xs transition-all border border-emerald-200">
+                            <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                            </svg>
+                            <span>Export Data</span>
+                        </button>
+                    </div>
+
+                    <div id="exportPanel" class="hidden bg-emerald-950/5 border-b border-emerald-100 p-4 transition-all">
+                        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                            <div>
+                                <h4 class="text-xs font-black text-emerald-900 uppercase tracking-wide">Database Export Tools</h4>
+                                <p class="text-[10px] text-slate-500 font-medium">Download transaction records to open in Excel (for pivot tables) or import into SQL databases.</p>
+                            </div>
+                            <div class="flex items-center gap-2 w-full md:w-auto flex-wrap sm:flex-nowrap">
+                                <select id="exportScope" class="bg-white border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700 outline-none">
+                                    <option value="filtered">Filtered View Only</option>
+                                    <option value="all">Full Database (All History)</option>
+                                </select>
+                                <button onclick="exportData('csv')" class="flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1">
+                                    <span>CSV (Excel)</span>
+                                </button>
+                                <button onclick="exportData('sql')" class="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1">
+                                    <span>SQL Dump</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="bg-slate-100 p-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-slate-200">
@@ -327,6 +354,121 @@
             
             setupSpeechRecognition();
             calculateStats();
+        }
+
+        function toggleExportPanel() {
+            const panel = document.getElementById('exportPanel');
+            panel.classList.toggle('hidden');
+        }
+
+        function getFilteredTransactions() {
+            const targetOwnerFilter = document.getElementById('history_owner_filter').value;
+            const targetLabelFilter = document.getElementById('history_label_filter').value;
+            const startVal = document.getElementById('historyStart').value;
+            const endVal = document.getElementById('historyEnd').value;
+            
+            let startDate = startVal ? new Date(startVal) : null;
+            let endDate = endVal ? new Date(endVal) : null;
+            if (startDate) startDate.setHours(0,0,0,0);
+            if (endDate) endDate.setHours(23,59,59,999);
+
+            return globalTransactionsCache.filter(t => {
+                const tDate = parseLocal(t.created_at);
+                const owner = t.owner || 'Mathias';
+
+                if (targetOwnerFilter !== 'all' && owner !== targetOwnerFilter) return false;
+                if (targetLabelFilter !== 'all' && String(t.label_id) !== String(targetLabelFilter)) return false;
+                if (startDate && tDate < startDate) return false;
+                if (endDate && tDate > endDate) return false;
+
+                return true;
+            });
+        }
+
+        function exportData(format) {
+            const scope = document.getElementById('exportScope').value;
+            const records = (scope === 'all') ? globalTransactionsCache : getFilteredTransactions();
+
+            if (!records || records.length === 0) {
+                alert("No transactions available to export for the selected criteria.");
+                return;
+            }
+
+            const timestamp = new Date().toISOString().slice(0, 10);
+
+            if (format === 'csv') {
+                const headers = ["ID", "Date", "Time", "Description", "Amount", "Type", "Label", "Label_ID", "Owner", "Is_Savings", "Created_At_UTC"];
+                
+                const csvRows = [headers.join(",")];
+
+                records.forEach(t => {
+                    const tDate = parseLocal(t.created_at);
+                    const yyyy = tDate.getFullYear();
+                    const mm = String(tDate.getMonth() + 1).padStart(2, '0');
+                    const dd = String(tDate.getDate()).padStart(2, '0');
+                    const dateStr = `${yyyy}-${mm}-${dd}`;
+                    const timeStr = tDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                    const labelName = t.labels?.name || 'Misc';
+                    const cleanDesc = `"${(t.description || '').replace(/"/g, '""')}"`;
+                    const cleanLabel = `"${labelName.replace(/"/g, '""')}"`;
+
+                    const row = [
+                        t.id,
+                        dateStr,
+                        timeStr,
+                        cleanDesc,
+                        t.amount,
+                        t.type,
+                        cleanLabel,
+                        t.label_id || '',
+                        t.owner || 'Mathias',
+                        t.is_savings ? 'TRUE' : 'FALSE',
+                        t.created_at
+                    ];
+                    csvRows.push(row.join(","));
+                });
+
+                const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + csvRows.join("\n");
+                downloadFile(csvContent, `financeflow_transactions_${scope}_${timestamp}.csv`);
+
+            } else if (format === 'sql') {
+                let sqlStr = `-- FinanceFlow Transaction History Export\n`;
+                sqlStr += `-- Exported on: ${new Date().toISOString()}\n`;
+                sqlStr += `-- Record Count: ${records.length}\n\n`;
+
+                sqlStr += `CREATE TABLE IF NOT EXISTS transactions (\n`;
+                sqlStr += `    id VARCHAR(64) PRIMARY KEY,\n`;
+                sqlStr += `    created_at TIMESTAMP WITH TIME ZONE,\n`;
+                sqlStr += `    description TEXT,\n`;
+                sqlStr += `    amount NUMERIC(12,2),\n`;
+                sqlStr += `    type VARCHAR(16),\n`;
+                sqlStr += `    label_id VARCHAR(64),\n`;
+                sqlStr += `    owner VARCHAR(64),\n`;
+                sqlStr += `    is_savings BOOLEAN\n`;
+                sqlStr += `);\n\n`;
+
+                records.forEach(t => {
+                    const escDesc = (t.description || '').replace(/'/g, "''");
+                    const escOwner = (t.owner || 'Mathias').replace(/'/g, "''");
+                    const labelIdVal = t.label_id ? `'${t.label_id}'` : 'NULL';
+                    
+                    sqlStr += `INSERT INTO transactions (id, created_at, description, amount, type, label_id, owner, is_savings) VALUES `;
+                    sqlStr += `('${t.id}', '${t.created_at}', '${escDesc}', ${t.amount}, '${t.type}', ${labelIdVal}, '${escOwner}', ${t.is_savings ? 'TRUE' : 'FALSE'});\n`;
+                });
+
+                const sqlContent = "data:text/plain;charset=utf-8," + encodeURIComponent(sqlStr);
+                downloadFile(sqlContent, `financeflow_transactions_${scope}_${timestamp}.sql`);
+            }
+        }
+
+        function downloadFile(content, fileName) {
+            const encodedUri = encodeURI(content);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", fileName);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         function setupSpeechRecognition() {
@@ -654,33 +796,13 @@
             const historyBody = document.getElementById('history-body');
             historyBody.innerHTML = '';
             
-            const targetOwnerFilter = document.getElementById('history_owner_filter').value;
-            const targetLabelFilter = document.getElementById('history_label_filter').value;
-            const startVal = document.getElementById('historyStart').value;
-            const endVal = document.getElementById('historyEnd').value;
-            
-            let startDate = startVal ? new Date(startVal) : null;
-            let endDate = endVal ? new Date(endVal) : null;
-            if (startDate) startDate.setHours(0,0,0,0);
-            if (endDate) endDate.setHours(23,59,59,999);
-
+            const filteredTransactions = getFilteredTransactions();
             const now = new Date();
 
-            for (let i = globalTransactionsCache.length - 1; i >= 0; i--) {
-                const t = globalTransactionsCache[i];
+            for (let i = filteredTransactions.length - 1; i >= 0; i--) {
+                const t = filteredTransactions[i];
                 const tDate = parseLocal(t.created_at);
                 const owner = t.owner || 'Mathias';
-
-                if (targetOwnerFilter !== 'all' && owner !== targetOwnerFilter) {
-                    continue;
-                }
-                
-                if (targetLabelFilter !== 'all' && String(t.label_id) !== String(targetLabelFilter)) {
-                    continue;
-                }
-                
-                if (startDate && tDate < startDate) continue;
-                if (endDate && tDate > endDate) continue;
 
                 const amt = parseFloat(t.amount);
                 const isInc = t.type === 'income';
