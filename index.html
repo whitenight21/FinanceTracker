@@ -68,7 +68,8 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-1">
+            <div class="lg:col-span-1 space-y-6">
+                <!-- NEW ENTRY CARD -->
                 <div class="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 sticky top-4">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="font-bold text-base text-slate-800">New Entry</h3>
@@ -111,6 +112,31 @@
                         <button onclick="addTransaction()" class="w-full bg-slate-900 text-white font-black py-3 rounded-xl hover:bg-black shadow-lg text-sm">Save Entry</button>
                     </div>
                 </div>
+
+                <!-- MANAGE LABELS CARD (NEW OPTION BELOW NEW ENTRY) -->
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-indigo-600 text-xs uppercase tracking-widest mb-3">Manage Labels</h3>
+                    
+                    <!-- Add Label -->
+                    <div class="mb-4 space-y-2">
+                        <label class="block text-[8px] font-black uppercase text-slate-400 pl-1">Add New Label</label>
+                        <div class="flex gap-2">
+                            <input id="new_label_name" type="text" placeholder="Label Name" class="flex-1 border-slate-200 border p-2 rounded-xl text-xs font-semibold outline-none">
+                            <button onclick="addNewLabel()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-3 py-2 rounded-xl text-xs transition-all shadow-sm">Add</button>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100 my-3">
+
+                    <!-- Remove Label -->
+                    <div class="space-y-2">
+                        <label class="block text-[8px] font-black uppercase text-slate-400 pl-1">Remove Selected Label</label>
+                        <div class="flex gap-2">
+                            <select id="delete_label_select" class="flex-1 border-slate-200 border p-2 rounded-xl text-xs bg-slate-50 font-semibold outline-none"></select>
+                            <button onclick="deleteSelectedLabel()" class="bg-rose-500 hover:bg-rose-600 text-white font-black px-3 py-2 rounded-xl text-xs transition-all shadow-sm">Remove</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="lg:col-span-2 space-y-6">
@@ -127,7 +153,7 @@
                     <div class="h-48 md:h-64"><canvas id="lineChart"></canvas></div>
                 </div>
 
-                <!-- NEW SECTION: Income/Expenses by Labels -->
+                <!-- Income/Expenses by Labels -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <h3 class="font-bold text-indigo-600 text-[10px] uppercase tracking-widest">Income / Expenses by Labels</h3>
@@ -139,7 +165,6 @@
                         </div>
                     </div>
 
-                    <!-- Total Income & Total Expenses Summary Cards -->
                     <div class="grid grid-cols-2 gap-3 mb-4">
                         <div class="bg-emerald-50/60 p-3 rounded-2xl border border-emerald-100 text-center">
                             <p class="text-[9px] font-black text-emerald-600 uppercase tracking-wider">Total Income</p>
@@ -151,13 +176,11 @@
                         </div>
                     </div>
 
-                    <!-- Label Selector -->
                     <div class="mb-4">
                         <label class="block text-[9px] font-black uppercase text-slate-400 mb-1 pl-1">Filter Label Breakdown</label>
                         <select id="labelReportSelect" onchange="renderLabelReport()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none"></select>
                     </div>
 
-                    <!-- Expense Bar Chart -->
                     <div class="h-56 md:h-64">
                         <canvas id="labelBarChart"></canvas>
                     </div>
@@ -240,7 +263,7 @@
                         <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                             <div>
                                 <h4 class="text-xs font-black text-emerald-900 uppercase tracking-wide">Database Export Tools</h4>
-                                <p class="text-[10px] text-slate-500 font-medium">Download transaction records to open in Excel (for pivot tables) or import into SQL databases.</p>
+                                <p class="text-[10px] text-slate-500 font-medium">Download transaction records to open in Excel or import into SQL databases.</p>
                             </div>
                             <div class="flex items-center gap-2 w-full md:w-auto flex-wrap sm:flex-nowrap">
                                 <select id="exportScope" class="bg-white border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700 outline-none">
@@ -341,19 +364,17 @@
 
         let lineChart;
         let savingsChart;
-        let labelBarChart; // Bar chart instance for label expenses
+        let labelBarChart; 
         let globalTransactionsCache = []; 
         let globalLabelsCache = [];
         let currentViewDate = new Date();
 
-        // Color palette for distinct label bar colors
         const labelColors = [
             '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', 
             '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', 
             '#ec4899', '#f43f5e', '#14b8a6', '#0284c7', '#a855f7'
         ];
         
-        // Setup initial default date and local time inputs
         document.getElementById('header-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
         
         const nowLocal = new Date();
@@ -362,7 +383,6 @@
         const currentMinutes = String(nowLocal.getMinutes()).padStart(2, '0');
         document.getElementById('time').value = `${currentHours}:${currentMinutes}`;
 
-        // Default the Label Breakdown section dates to current month start & end
         const firstDayStr = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), 1).toISOString().split('T')[0];
         const lastDayStr = new Date(nowLocal.getFullYear(), nowLocal.getMonth() + 1, 0).toISOString().split('T')[0];
         document.getElementById('labelReportStart').value = firstDayStr;
@@ -372,7 +392,7 @@
             return new Date(str);
         }
 
-        async function init() {
+        async function refreshLabels() {
             const { data: labels } = await supabaseClient.from('labels').select('*').order('name');
             globalLabelsCache = labels || [];
             const labelOptions = globalLabelsCache ? globalLabelsCache.map(l => `<option value="${l.id}">${l.name}</option>`).join('') : '';
@@ -380,11 +400,53 @@
             document.getElementById('label_select').innerHTML = labelOptions;
             document.getElementById('edit_label').innerHTML = labelOptions;
             document.getElementById('lookupLabel').innerHTML = labelOptions;
+            document.getElementById('delete_label_select').innerHTML = labelOptions;
             
             document.getElementById('history_label_filter').innerHTML = '<option value="all">All Labels</option>' + labelOptions;
             document.getElementById('labelReportSelect').innerHTML = '<option value="all">All Labels</option>' + labelOptions;
-            
+        }
+
+        async function init() {
+            await refreshLabels();
             calculateStats();
+        }
+
+        async function addNewLabel() {
+            const nameInput = document.getElementById('new_label_name');
+            const newName = nameInput.value.trim();
+            
+            if (!newName) {
+                alert("Please enter a label name.");
+                return;
+            }
+
+            const { error } = await supabaseClient.from('labels').insert([{ name: newName }]);
+            if (error) {
+                alert("Error adding label: " + error.message);
+                return;
+            }
+
+            nameInput.value = '';
+            await refreshLabels();
+            calculateStats();
+        }
+
+        async function deleteSelectedLabel() {
+            const labelSelect = document.getElementById('delete_label_select');
+            const labelId = labelSelect.value;
+            const labelName = labelSelect.options[labelSelect.selectedIndex]?.text;
+
+            if (!labelId) return;
+
+            if (confirm(`Are you sure you want to delete the label "${labelName}"? Existing transactions with this label will lose their reference.`)) {
+                const { error } = await supabaseClient.from('labels').delete().eq('id', labelId);
+                if (error) {
+                    alert("Error deleting label: " + error.message);
+                    return;
+                }
+                await refreshLabels();
+                calculateStats();
+            }
         }
 
         function toggleExportPanel() {
@@ -429,7 +491,6 @@
 
             if (format === 'csv') {
                 const headers = ["ID", "Date", "Time", "Description", "Amount", "Type", "Label", "Label_ID", "Owner", "Is_Savings", "Created_At_UTC"];
-                
                 const csvRows = [headers.join(",")];
 
                 records.forEach(t => {
@@ -444,17 +505,8 @@
                     const cleanLabel = `"${labelName.replace(/"/g, '""')}"`;
 
                     const row = [
-                        t.id,
-                        dateStr,
-                        timeStr,
-                        cleanDesc,
-                        t.amount,
-                        t.type,
-                        cleanLabel,
-                        t.label_id || '',
-                        t.owner || 'Mathias',
-                        t.is_savings ? 'TRUE' : 'FALSE',
-                        t.created_at
+                        t.id, dateStr, timeStr, cleanDesc, t.amount, t.type, cleanLabel,
+                        t.label_id || '', t.owner || 'Mathias', t.is_savings ? 'TRUE' : 'FALSE', t.created_at
                     ];
                     csvRows.push(row.join(","));
                 });
@@ -463,20 +515,8 @@
                 downloadFile(csvContent, `financeflow_transactions_${scope}_${timestamp}.csv`);
 
             } else if (format === 'sql') {
-                let sqlStr = `-- FinanceFlow Transaction History Export\n`;
-                sqlStr += `-- Exported on: ${new Date().toISOString()}\n`;
-                sqlStr += `-- Record Count: ${records.length}\n\n`;
-
-                sqlStr += `CREATE TABLE IF NOT EXISTS transactions (\n`;
-                sqlStr += `    id VARCHAR(64) PRIMARY KEY,\n`;
-                sqlStr += `    created_at TIMESTAMP WITH TIME ZONE,\n`;
-                sqlStr += `    description TEXT,\n`;
-                sqlStr += `    amount NUMERIC(12,2),\n`;
-                sqlStr += `    type VARCHAR(16),\n`;
-                sqlStr += `    label_id VARCHAR(64),\n`;
-                sqlStr += `    owner VARCHAR(64),\n`;
-                sqlStr += `    is_savings BOOLEAN\n`;
-                sqlStr += `);\n\n`;
+                let sqlStr = `-- FinanceFlow Transaction History Export\n-- Exported on: ${new Date().toISOString()}\n\n`;
+                sqlStr += `CREATE TABLE IF NOT EXISTS transactions (\n    id VARCHAR(64) PRIMARY KEY,\n    created_at TIMESTAMP WITH TIME ZONE,\n    description TEXT,\n    amount NUMERIC(12,2),\n    type VARCHAR(16),\n    label_id VARCHAR(64),\n    owner VARCHAR(64),\n    is_savings BOOLEAN\n);\n\n`;
 
                 records.forEach(t => {
                     const escDesc = (t.description || '').replace(/'/g, "''");
@@ -505,7 +545,6 @@
         async function addTransaction() {
             const dateVal = document.getElementById('date').value;
             const timeVal = document.getElementById('time').value || '00:00';
-            
             const localDateTime = new Date(`${dateVal}T${timeVal}`);
 
             const payload = {
@@ -642,7 +681,6 @@
             document.getElementById('lookupResult').innerText = `$${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         }
 
-        // Renders Income/Expenses totals & label expense bar chart in custom range
         function renderLabelReport() {
             const startVal = document.getElementById('labelReportStart').value;
             const endVal = document.getElementById('labelReportEnd').value;
@@ -657,7 +695,6 @@
             let totalExpenses = 0;
             const labelExpenseTotals = {};
 
-            // Map available labels for fast lookup
             const labelMap = {};
             globalLabelsCache.forEach(l => labelMap[l.id] = l.name);
 
@@ -674,7 +711,6 @@
                 } else if (t.type === 'expense') {
                     totalExpenses += amt;
 
-                    // Filter for bar chart if single label selected or all
                     if (selectedLabelId === 'all' || String(t.label_id) === String(selectedLabelId)) {
                         const lname = t.labels?.name || labelMap[t.label_id] || 'Uncategorized';
                         labelExpenseTotals[lname] = (labelExpenseTotals[lname] || 0) + amt;
@@ -682,11 +718,9 @@
                 }
             });
 
-            // Update UI totals
             document.getElementById('labelReportTotalIncome').innerText = `$${totalIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('labelReportTotalExpenses').innerText = `$${totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
-            // Prepare bar chart data (highest to lowest)
             const sortedLabels = Object.keys(labelExpenseTotals).sort((a, b) => labelExpenseTotals[b] - labelExpenseTotals[a]);
             const sortedValues = sortedLabels.map(l => labelExpenseTotals[l]);
             const barColors = sortedLabels.map((_, idx) => labelColors[idx % labelColors.length]);
@@ -712,7 +746,7 @@
                     }]
                 },
                 options: {
-                    indexAxis: 'y', // Horizontal bars for clean reading
+                    indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
