@@ -6,6 +6,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js DataLabels Plugin CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <title>FinanceFlow v8.4</title>
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
@@ -735,6 +737,7 @@
 
             labelBarChart = new Chart(ctx, {
                 type: 'bar',
+                plugins: [ChartDataLabels],
                 data: {
                     labels: sortedLabels,
                     datasets: [{
@@ -749,6 +752,11 @@
                     indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            right: 50 // Extra padding on right to prevent text truncation
+                        }
+                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -759,6 +767,16 @@
                             callbacks: {
                                 label: (ctx) => ` Expense: $${ctx.parsed.x.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
                             }
+                        },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'end',
+                            color: '#334155',
+                            font: {
+                                size: 10,
+                                weight: 'bold'
+                            },
+                            formatter: (value) => '$' + value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
                         }
                     },
                     scales: {
