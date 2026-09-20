@@ -6,6 +6,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Added DataLabels plugin for Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <title>FinanceFlow v8.4</title>
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
@@ -69,8 +71,8 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-1 space-y-6">
-                <!-- NEW ENTRY CARD -->
-                <div class="bg-white p-5 rounded-3xl shadow-xl border border-slate-100 sticky top-4">
+                <!-- NEW ENTRY CARD (Removed sticky top-4 so manage labels is not hidden) -->
+                <div class="bg-white p-5 rounded-3xl shadow-xl border border-slate-100">
                     <div class="flex items-center justify-between mb-4">
                         <h3 class="font-bold text-base text-slate-800">New Entry</h3>
                     </div>
@@ -113,7 +115,7 @@
                     </div>
                 </div>
 
-                <!-- MANAGE LABELS CARD (NEW OPTION BELOW NEW ENTRY) -->
+                <!-- MANAGE LABELS CARD -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <h3 class="font-bold text-indigo-600 text-xs uppercase tracking-widest mb-3">Manage Labels</h3>
                     
@@ -733,6 +735,9 @@
                 return;
             }
 
+            // Registered ChartDataLabels plugin to render data values next to labels
+            Chart.register(ChartDataLabels);
+
             labelBarChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -751,6 +756,13 @@
                     maintainAspectRatio: false,
                     plugins: {
                         legend: { display: false },
+                        datalabels: {
+                            anchor: 'start',
+                            align: 'right',
+                            color: '#1e293b',
+                            font: { size: 10, weight: 'bold' },
+                            formatter: (value) => '$' + value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
+                        },
                         tooltip: {
                             backgroundColor: '#0f172a',
                             titleFont: { size: 11, weight: 'bold' },
@@ -905,7 +917,7 @@
         function renderCalendar(dailyData) {
             const year = currentViewDate.getFullYear(), month = currentViewDate.getMonth();
             const now = new Date();
-            const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj => dateObj.getDate()).padStart(2, '0');
             
             document.getElementById('calendar-month-name').innerText = currentViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
             
