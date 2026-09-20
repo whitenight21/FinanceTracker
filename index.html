@@ -127,6 +127,42 @@
                     <div class="h-48 md:h-64"><canvas id="lineChart"></canvas></div>
                 </div>
 
+                <!-- NEW SECTION: Income/Expenses by Labels -->
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
+                        <h3 class="font-bold text-indigo-600 text-[10px] uppercase tracking-widest">Income / Expenses by Labels</h3>
+                        <div class="flex items-center gap-2 text-[10px] font-black">
+                            <span class="text-slate-400 uppercase">Start:</span>
+                            <input id="labelReportStart" type="date" onchange="renderLabelReport()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                            <span class="text-slate-400 uppercase">End:</span>
+                            <input id="labelReportEnd" type="date" onchange="renderLabelReport()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                        </div>
+                    </div>
+
+                    <!-- Total Income & Total Expenses Summary Cards -->
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="bg-emerald-50/60 p-3 rounded-2xl border border-emerald-100 text-center">
+                            <p class="text-[9px] font-black text-emerald-600 uppercase tracking-wider">Total Income</p>
+                            <h4 id="labelReportTotalIncome" class="text-lg md:text-xl font-black text-emerald-700 mt-1">$0.00</h4>
+                        </div>
+                        <div class="bg-rose-50/60 p-3 rounded-2xl border border-rose-100 text-center">
+                            <p class="text-[9px] font-black text-rose-600 uppercase tracking-wider">Total Expenses</p>
+                            <h4 id="labelReportTotalExpenses" class="text-lg md:text-xl font-black text-rose-700 mt-1">$0.00</h4>
+                        </div>
+                    </div>
+
+                    <!-- Label Selector -->
+                    <div class="mb-4">
+                        <label class="block text-[9px] font-black uppercase text-slate-400 mb-1 pl-1">Filter Label Breakdown</label>
+                        <select id="labelReportSelect" onchange="renderLabelReport()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none"></select>
+                    </div>
+
+                    <!-- Expense Bar Chart -->
+                    <div class="h-56 md:h-64">
+                        <canvas id="labelBarChart"></canvas>
+                    </div>
+                </div>
+
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <h3 class="font-bold text-sky-600 text-[10px] uppercase tracking-widest">Savings Trend</h3>
@@ -305,9 +341,17 @@
 
         let lineChart;
         let savingsChart;
+        let labelBarChart; // Bar chart instance for label expenses
         let globalTransactionsCache = []; 
         let globalLabelsCache = [];
         let currentViewDate = new Date();
+
+        // Color palette for distinct label bar colors
+        const labelColors = [
+            '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', 
+            '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', 
+            '#ec4899', '#f43f5e', '#14b8a6', '#0284c7', '#a855f7'
+        ];
         
         // Setup initial default date and local time inputs
         document.getElementById('header-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
@@ -317,6 +361,12 @@
         const currentHours = String(nowLocal.getHours()).padStart(2, '0');
         const currentMinutes = String(nowLocal.getMinutes()).padStart(2, '0');
         document.getElementById('time').value = `${currentHours}:${currentMinutes}`;
+
+        // Default the Label Breakdown section dates to current month start & end
+        const firstDayStr = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), 1).toISOString().split('T')[0];
+        const lastDayStr = new Date(nowLocal.getFullYear(), nowLocal.getMonth() + 1, 0).toISOString().split('T')[0];
+        document.getElementById('labelReportStart').value = firstDayStr;
+        document.getElementById('labelReportEnd').value = lastDayStr;
 
         function parseLocal(str) {
             return new Date(str);
@@ -332,6 +382,7 @@
             document.getElementById('lookupLabel').innerHTML = labelOptions;
             
             document.getElementById('history_label_filter').innerHTML = '<option value="all">All Labels</option>' + labelOptions;
+            document.getElementById('labelReportSelect').innerHTML = '<option value="all">All Labels</option>' + labelOptions;
             
             calculateStats();
         }
@@ -591,6 +642,105 @@
             document.getElementById('lookupResult').innerText = `$${total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
         }
 
+        // Renders Income/Expenses totals & label expense bar chart in custom range
+        function renderLabelReport() {
+            const startVal = document.getElementById('labelReportStart').value;
+            const endVal = document.getElementById('labelReportEnd').value;
+            const selectedLabelId = document.getElementById('labelReportSelect').value;
+
+            let startDate = startVal ? new Date(startVal) : null;
+            let endDate = endVal ? new Date(endVal) : null;
+            if (startDate) startDate.setHours(0,0,0,0);
+            if (endDate) endDate.setHours(23,59,59,999);
+
+            let totalIncome = 0;
+            let totalExpenses = 0;
+            const labelExpenseTotals = {};
+
+            // Map available labels for fast lookup
+            const labelMap = {};
+            globalLabelsCache.forEach(l => labelMap[l.id] = l.name);
+
+            globalTransactionsCache.forEach(t => {
+                const tDate = parseLocal(t.created_at);
+
+                if (startDate && tDate < startDate) return;
+                if (endDate && tDate > endDate) return;
+
+                const amt = parseFloat(t.amount);
+
+                if (t.type === 'income') {
+                    totalIncome += amt;
+                } else if (t.type === 'expense') {
+                    totalExpenses += amt;
+
+                    // Filter for bar chart if single label selected or all
+                    if (selectedLabelId === 'all' || String(t.label_id) === String(selectedLabelId)) {
+                        const lname = t.labels?.name || labelMap[t.label_id] || 'Uncategorized';
+                        labelExpenseTotals[lname] = (labelExpenseTotals[lname] || 0) + amt;
+                    }
+                }
+            });
+
+            // Update UI totals
+            document.getElementById('labelReportTotalIncome').innerText = `$${totalIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('labelReportTotalExpenses').innerText = `$${totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+            // Prepare bar chart data (highest to lowest)
+            const sortedLabels = Object.keys(labelExpenseTotals).sort((a, b) => labelExpenseTotals[b] - labelExpenseTotals[a]);
+            const sortedValues = sortedLabels.map(l => labelExpenseTotals[l]);
+            const barColors = sortedLabels.map((_, idx) => labelColors[idx % labelColors.length]);
+
+            if (labelBarChart) labelBarChart.destroy();
+
+            const ctx = document.getElementById('labelBarChart').getContext('2d');
+            if (sortedLabels.length === 0) {
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                return;
+            }
+
+            labelBarChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedLabels,
+                    datasets: [{
+                        label: 'Expense Total',
+                        data: sortedValues,
+                        backgroundColor: barColors,
+                        borderRadius: 8,
+                        borderSkipped: false
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // Horizontal bars for clean reading
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { size: 11, weight: 'bold' },
+                            bodyFont: { size: 12 },
+                            displayColors: true,
+                            callbacks: {
+                                label: (ctx) => ` Expense: $${ctx.parsed.x.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { 
+                            ticks: { font: { size: 9 }, callback: (value) => '$' + value },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        y: { 
+                            ticks: { font: { size: 10, weight: 'bold' } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
         async function calculateStats() {
             const { data: transactions } = await supabaseClient.from('transactions').select('*, labels(*)').order('created_at', { ascending: true });
             globalTransactionsCache = transactions || [];
@@ -668,6 +818,7 @@
 
             updateLineChart(liquidTimeline);
             updateSavingsChart(savingsTimeline);
+            renderLabelReport();
             renderCalendar(dailyData);
             renderFilteredHistory();
             calculateLabelExpense();
