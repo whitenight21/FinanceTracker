@@ -8,6 +8,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Chart.js DataLabels Plugin CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <!-- sql.js WebAssembly Library for Binary SQLite Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
     <title>FinanceFlow v8.4</title>
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
@@ -265,7 +267,7 @@
                         <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                             <div>
                                 <h4 class="text-xs font-black text-emerald-900 uppercase tracking-wide">Database Export Tools</h4>
-                                <p class="text-[10px] text-slate-500 font-medium">Download transaction records to open in Excel or import into SQL databases.</p>
+                                <p class="text-[10px] text-slate-500 font-medium">Download transaction records to open in Excel or export as a binary SQLite file.</p>
                             </div>
                             <div class="flex items-center gap-2 w-full md:w-auto flex-wrap sm:flex-nowrap">
                                 <select id="exportScope" class="bg-white border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700 outline-none">
@@ -276,7 +278,7 @@
                                     <span>CSV (Excel)</span>
                                 </button>
                                 <button onclick="exportData('sql')" class="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs px-3.5 py-2 rounded-xl transition-all shadow-sm flex items-center justify-center gap-1">
-                                    <span>SQL Dump</span>
+                                    <span>Export SQLite</span>
                                 </button>
                             </div>
                         </div>
@@ -364,6 +366,7 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZndnBweHJ2aGV1a2tobmh5ZmltIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1OTUyNDgsImV4cCI6MjA5NDE3MTI0OH0.d4gsgx9bp79pVUw6yp65yyfpBWBmq-w_RICsJ6-S-Tw';
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
+        let SQL;
         let lineChart;
         let savingsChart;
         let labelBarChart; 
@@ -409,6 +412,17 @@
         }
 
         async function init() {
+            // Initialize sql.js WebAssembly engine
+            try {
+                if (window.initSqlJs) {
+                    SQL = await window.initSqlJs({
+                        locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to load sql.js engine:", e);
+            }
+
             await refreshLabels();
             calculateStats();
         }
@@ -480,7 +494,7 @@
             });
         }
 
-        function exportData(format) {
+        async function exportData(format) {
             const scope = document.getElementById('exportScope').value;
             const records = (scope === 'all') ? globalTransactionsCache : getFilteredTransactions();
 
@@ -517,36 +531,65 @@
                 downloadFile(csvContent, `financeflow_transactions_${scope}_${timestamp}.csv`);
 
             } else if (format === 'sql') {
-                let sqlStr = `-- FinanceFlow SQLite 3 Database Dump\n`;
-                sqlStr += `-- Exported on: ${new Date().toISOString()}\n\n`;
+                if (!SQL) {
+                    alert("sql.js library is still loading or unavailable. Please wait a moment and try again.");
+                    return;
+                }
 
-                sqlStr += `CREATE TABLE IF NOT EXISTS transactions (\n`;
-                sqlStr += `    id TEXT PRIMARY KEY,\n`;
-                sqlStr += `    created_at TEXT NOT NULL,\n`;
-                sqlStr += `    description TEXT,\n`;
-                sqlStr += `    amount REAL NOT NULL DEFAULT 0.0,\n`;
-                sqlStr += `    type TEXT CHECK(type IN ('income', 'expense')),\n`;
-                sqlStr += `    label_id TEXT,\n`;
-                sqlStr += `    owner TEXT,\n`;
-                sqlStr += `    is_savings INTEGER CHECK(is_savings IN (0, 1))\n`;
-                sqlStr += `);\n\n`;
+                // 1. Create an in-memory SQLite database instance
+                const db = new SQL.Database();
+
+                // 2. Define schema
+                db.run(`
+                    CREATE TABLE transactions (
+                        id TEXT PRIMARY KEY,
+                        created_at TEXT,
+                        description TEXT,
+                        amount REAL,
+                        type TEXT,
+                        label_id TEXT,
+                        owner TEXT,
+                        is_savings INTEGER
+                    );
+                `);
+
+                // 3. Insert records
+                const stmt = db.prepare(`
+                    INSERT INTO transactions (id, created_at, description, amount, type, label_id, owner, is_savings)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+                `);
 
                 records.forEach(t => {
-                    const escId = (t.id || '').replace(/'/g, "''");
-                    const escCreatedAt = (t.created_at || '').replace(/'/g, "''");
-                    const escDesc = (t.description || '').replace(/'/g, "''");
-                    const amt = isNaN(parseFloat(t.amount)) ? 0.0 : parseFloat(t.amount);
-                    const escType = (t.type || 'expense').replace(/'/g, "''");
-                    const labelIdVal = t.label_id ? `'${t.label_id.replace(/'/g, "''")}'` : 'NULL';
-                    const escOwner = (t.owner || 'Mathias').replace(/'/g, "''");
-                    const isSavingsVal = t.is_savings ? 1 : 0;
-
-                    sqlStr += `INSERT INTO transactions (id, created_at, description, amount, type, label_id, owner, is_savings) VALUES `;
-                    sqlStr += `('${escId}', '${escCreatedAt}', '${escDesc}', ${amt}, '${escType}', ${labelIdVal}, '${escOwner}', ${isSavingsVal});\n`;
+                    stmt.run([
+                        String(t.id),
+                        t.created_at,
+                        t.description || '',
+                        parseFloat(t.amount) || 0,
+                        t.type,
+                        t.label_id ? String(t.label_id) : null,
+                        t.owner || 'Mathias',
+                        t.is_savings ? 1 : 0
+                    ]);
                 });
+                stmt.free();
 
-                const sqlContent = "data:text/plain;charset=utf-8," + encodeURIComponent(sqlStr);
-                downloadFile(sqlContent, `financeflow_transactions_${scope}_${timestamp}.sql`);
+                // 4. Export database directly as a binary Uint8Array byte array
+                const binaryData = db.export();
+
+                // 5. Wrap raw Uint8Array bytes inside a Blob
+                const blob = new Blob([binaryData], { type: 'application/x-sqlite3' });
+
+                // 6. Trigger download with .sqlite extension
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `financeflow_${scope}_${timestamp}.sqlite`;
+                document.body.appendChild(link);
+                link.click();
+
+                // 7. Clean up memory
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+                db.close();
             }
         }
 
@@ -770,7 +813,7 @@
                     maintainAspectRatio: false,
                     layout: {
                         padding: {
-                            right: 50
+                            right: 50 // Extra padding on right to prevent text truncation
                         }
                     },
                     plugins: {
