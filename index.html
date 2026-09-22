@@ -517,16 +517,32 @@
                 downloadFile(csvContent, `financeflow_transactions_${scope}_${timestamp}.csv`);
 
             } else if (format === 'sql') {
-                let sqlStr = `-- FinanceFlow Transaction History Export\n-- Exported on: ${new Date().toISOString()}\n\n`;
-                sqlStr += `CREATE TABLE IF NOT EXISTS transactions (\n    id VARCHAR(64) PRIMARY KEY,\n    created_at TIMESTAMP WITH TIME ZONE,\n    description TEXT,\n    amount NUMERIC(12,2),\n    type VARCHAR(16),\n    label_id VARCHAR(64),\n    owner VARCHAR(64),\n    is_savings BOOLEAN\n);\n\n`;
+                let sqlStr = `-- FinanceFlow SQLite 3 Database Dump\n`;
+                sqlStr += `-- Exported on: ${new Date().toISOString()}\n\n`;
+
+                sqlStr += `CREATE TABLE IF NOT EXISTS transactions (\n`;
+                sqlStr += `    id TEXT PRIMARY KEY,\n`;
+                sqlStr += `    created_at TEXT NOT NULL,\n`;
+                sqlStr += `    description TEXT,\n`;
+                sqlStr += `    amount REAL NOT NULL DEFAULT 0.0,\n`;
+                sqlStr += `    type TEXT CHECK(type IN ('income', 'expense')),\n`;
+                sqlStr += `    label_id TEXT,\n`;
+                sqlStr += `    owner TEXT,\n`;
+                sqlStr += `    is_savings INTEGER CHECK(is_savings IN (0, 1))\n`;
+                sqlStr += `);\n\n`;
 
                 records.forEach(t => {
+                    const escId = (t.id || '').replace(/'/g, "''");
+                    const escCreatedAt = (t.created_at || '').replace(/'/g, "''");
                     const escDesc = (t.description || '').replace(/'/g, "''");
+                    const amt = isNaN(parseFloat(t.amount)) ? 0.0 : parseFloat(t.amount);
+                    const escType = (t.type || 'expense').replace(/'/g, "''");
+                    const labelIdVal = t.label_id ? `'${t.label_id.replace(/'/g, "''")}'` : 'NULL';
                     const escOwner = (t.owner || 'Mathias').replace(/'/g, "''");
-                    const labelIdVal = t.label_id ? `'${t.label_id}'` : 'NULL';
-                    
+                    const isSavingsVal = t.is_savings ? 1 : 0;
+
                     sqlStr += `INSERT INTO transactions (id, created_at, description, amount, type, label_id, owner, is_savings) VALUES `;
-                    sqlStr += `('${t.id}', '${t.created_at}', '${escDesc}', ${t.amount}, '${t.type}', ${labelIdVal}, '${escOwner}', ${t.is_savings ? 'TRUE' : 'FALSE'});\n`;
+                    sqlStr += `('${escId}', '${escCreatedAt}', '${escDesc}', ${amt}, '${escType}', ${labelIdVal}, '${escOwner}', ${isSavingsVal});\n`;
                 });
 
                 const sqlContent = "data:text/plain;charset=utf-8," + encodeURIComponent(sqlStr);
@@ -754,7 +770,7 @@
                     maintainAspectRatio: false,
                     layout: {
                         padding: {
-                            right: 50 // Extra padding on right to prevent text truncation
+                            right: 50
                         }
                     },
                     plugins: {
