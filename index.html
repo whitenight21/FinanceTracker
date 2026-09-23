@@ -17,7 +17,7 @@
         .modal { transition: opacity 0.2s ease; visibility: hidden; opacity: 0; position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
         .modal.active { visibility: visible; opacity: 1; }
         body.modal-active { overflow: hidden; }
-        .custom-scrollbar::-webkit-scrollbar { height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar { height: 4px; width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
@@ -195,9 +195,16 @@
                                 <option value="Julia">Julia</option>
                             </select>
                         </div>
-                        <div>
-                            <label class="block text-[9px] font-black uppercase text-slate-400 mb-1 pl-1">Filter Label Breakdown</label>
-                            <select id="labelReportSelect" onchange="renderLabelReport()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none"></select>
+                        <div class="relative">
+                            <div class="flex justify-between items-center mb-1 pl-1">
+                                <label class="block text-[9px] font-black uppercase text-slate-400">Filter Expense Labels</label>
+                                <button type="button" onclick="toggleAllLabelsReport()" id="toggleAllLabelsBtn" class="text-[9px] font-bold text-indigo-600 hover:text-indigo-800">Deselect All</button>
+                            </div>
+                            
+                            <!-- Multi-Select Label Dropdown Box -->
+                            <div class="border-slate-200 border rounded-xl bg-slate-50 p-2 max-h-32 overflow-y-auto custom-scrollbar space-y-1" id="labelReportMultiSelect">
+                                <!-- Checkboxes populated dynamically -->
+                            </div>
                         </div>
                     </div>
 
@@ -410,10 +417,19 @@
         const currentMinutes = String(nowLocal.getMinutes()).padStart(2, '0');
         document.getElementById('time').value = `${currentHours}:${currentMinutes}`;
 
-        const firstDayStr = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), 1).toISOString().split('T')[0];
-        const lastDayStr = new Date(nowLocal.getFullYear(), nowLocal.getMonth() + 1, 0).toISOString().split('T')[0];
-        document.getElementById('labelReportStart').value = firstDayStr;
-        document.getElementById('labelReportEnd').value = lastDayStr;
+        // Set Income/Expenses default date range to 1st of current month -> Last day of current month
+        const firstDayOfMonth = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), 1);
+        const lastDayOfMonth = new Date(nowLocal.getFullYear(), nowLocal.getMonth() + 1, 0);
+
+        const yyyyStart = firstDayOfMonth.getFullYear();
+        const mmStart = String(firstDayOfMonth.getMonth() + 1).padStart(2, '0');
+        const ddStart = String(firstDayOfMonth.getDate()).padStart(2, '0');
+        document.getElementById('labelReportStart').value = `${yyyyStart}-${mmStart}-${ddStart}`;
+
+        const yyyyEnd = lastDayOfMonth.getFullYear();
+        const mmEnd = String(lastDayOfMonth.getMonth() + 1).padStart(2, '0');
+        const ddEnd = String(lastDayOfMonth.getDate()).padStart(2, '0');
+        document.getElementById('labelReportEnd').value = `${yyyyEnd}-${mmEnd}-${ddEnd}`;
 
         function parseLocal(str) {
             return new Date(str);
@@ -430,7 +446,29 @@
             document.getElementById('delete_label_select').innerHTML = labelOptions;
             
             document.getElementById('history_label_filter').innerHTML = '<option value="all">All Labels</option>' + labelOptions;
-            document.getElementById('labelReportSelect').innerHTML = '<option value="all">All Labels</option>' + labelOptions;
+            
+            // Build Multi-Select for Label Report (Defaults to ALL checked)
+            const multiSelectContainer = document.getElementById('labelReportMultiSelect');
+            if (globalLabelsCache && globalLabelsCache.length > 0) {
+                multiSelectContainer.innerHTML = globalLabelsCache.map(l => `
+                    <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer hover:bg-slate-100 p-1 rounded-md">
+                        <input type="checkbox" value="${l.id}" class="label-report-checkbox accent-indigo-600 rounded" checked onchange="renderLabelReport()">
+                        <span class="truncate">${l.name}</span>
+                    </label>
+                `).join('');
+            } else {
+                multiSelectContainer.innerHTML = '<span class="text-xs text-slate-400 p-1 block">No labels available</span>';
+            }
+        }
+
+        function toggleAllLabelsReport() {
+            const checkboxes = document.querySelectorAll('.label-report-checkbox');
+            const toggleBtn = document.getElementById('toggleAllLabelsBtn');
+            const shouldCheckAll = toggleBtn.innerText === 'Select All';
+
+            checkboxes.forEach(cb => cb.checked = shouldCheckAll);
+            toggleBtn.innerText = shouldCheckAll ? 'Deselect All' : 'Select All';
+            renderLabelReport();
         }
 
         async function init() {
@@ -760,7 +798,10 @@
             const startVal = document.getElementById('labelReportStart').value;
             const endVal = document.getElementById('labelReportEnd').value;
             const selectedOwner = document.getElementById('labelReportOwnerSelect').value;
-            const selectedLabelId = document.getElementById('labelReportSelect').value;
+
+            // Get selected label IDs from the multi-select checkboxes
+            const selectedCheckboxes = Array.from(document.querySelectorAll('.label-report-checkbox:checked'));
+            const selectedLabelIds = selectedCheckboxes.map(cb => String(cb.value));
 
             let startDate = startVal ? new Date(startVal) : null;
             let endDate = endVal ? new Date(endVal) : null;
@@ -787,9 +828,9 @@
                 if (t.type === 'income') {
                     totalIncome += amt;
                 } else if (t.type === 'expense') {
-                    totalExpenses += amt;
-
-                    if (selectedLabelId === 'all' || String(t.label_id) === String(selectedLabelId)) {
+                    // Include in expense totals only if label is selected
+                    if (selectedLabelIds.includes(String(t.label_id))) {
+                        totalExpenses += amt;
                         const lname = t.labels?.name || labelMap[t.label_id] || 'Uncategorized';
                         labelExpenseTotals[lname] = (labelExpenseTotals[lname] || 0) + amt;
                     }
