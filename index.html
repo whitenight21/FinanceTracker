@@ -180,9 +180,19 @@
                         </div>
                     </div>
 
-                    <div class="mb-4">
-                        <label class="block text-[9px] font-black uppercase text-slate-400 mb-1 pl-1">Filter Label Breakdown</label>
-                        <select id="labelReportSelect" onchange="renderLabelReport()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none"></select>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="block text-[9px] font-black uppercase text-slate-400 mb-1 pl-1">Filter Owner</label>
+                            <select id="labelReportOwnerSelect" onchange="renderLabelReport()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none">
+                                <option value="all">All Owners</option>
+                                <option value="Mathias">Mathias</option>
+                                <option value="Julia">Julia</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[9px] font-black uppercase text-slate-400 mb-1 pl-1">Filter Label Breakdown</label>
+                            <select id="labelReportSelect" onchange="renderLabelReport()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none"></select>
+                        </div>
                     </div>
 
                     <div class="h-56 md:h-64">
@@ -745,6 +755,7 @@
         function renderLabelReport() {
             const startVal = document.getElementById('labelReportStart').value;
             const endVal = document.getElementById('labelReportEnd').value;
+            const selectedOwner = document.getElementById('labelReportOwnerSelect').value;
             const selectedLabelId = document.getElementById('labelReportSelect').value;
 
             let startDate = startVal ? new Date(startVal) : null;
@@ -761,9 +772,11 @@
 
             globalTransactionsCache.forEach(t => {
                 const tDate = parseLocal(t.created_at);
+                const owner = t.owner || 'Mathias';
 
                 if (startDate && tDate < startDate) return;
                 if (endDate && tDate > endDate) return;
+                if (selectedOwner !== 'all' && owner !== selectedOwner) return;
 
                 const amt = parseFloat(t.amount);
 
