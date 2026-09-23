@@ -144,10 +144,16 @@
             </div>
 
             <div class="lg:col-span-2 space-y-6">
+                <!-- LIQUID TREND CARD -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <h3 class="font-bold text-slate-700 text-[10px] uppercase tracking-widest">Liquid Trend</h3>
-                        <div class="flex items-center gap-2 text-[10px] font-black">
+                        <div class="flex flex-wrap items-center gap-2 text-[10px] font-black">
+                            <select id="trendOwner" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold text-slate-700">
+                                <option value="all">All Owners</option>
+                                <option value="Mathias">Mathias</option>
+                                <option value="Julia">Julia</option>
+                            </select>
                             <span class="text-slate-400 uppercase">Start:</span>
                             <input id="trendStart" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
                             <span class="text-slate-400 uppercase">End:</span>
@@ -200,10 +206,16 @@
                     </div>
                 </div>
 
+                <!-- SAVINGS TREND CARD -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <h3 class="font-bold text-sky-600 text-[10px] uppercase tracking-widest">Savings Trend</h3>
-                        <div class="flex items-center gap-2 text-[10px] font-black">
+                        <div class="flex flex-wrap items-center gap-2 text-[10px] font-black">
+                            <select id="savingsOwner" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold text-slate-700">
+                                <option value="all">All Owners</option>
+                                <option value="Mathias">Mathias</option>
+                                <option value="Julia">Julia</option>
+                            </select>
                             <span class="text-slate-400 uppercase">Start:</span>
                             <input id="savingsStart" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
                             <span class="text-slate-400 uppercase">End:</span>
@@ -546,10 +558,8 @@
                     return;
                 }
 
-                // 1. Create an in-memory SQLite database instance
                 const db = new SQL.Database();
 
-                // 2. Define schema
                 db.run(`
                     CREATE TABLE transactions (
                         id TEXT PRIMARY KEY,
@@ -563,7 +573,6 @@
                     );
                 `);
 
-                // 3. Insert records
                 const stmt = db.prepare(`
                     INSERT INTO transactions (id, created_at, description, amount, type, label_id, owner, is_savings)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?);
@@ -583,20 +592,15 @@
                 });
                 stmt.free();
 
-                // 4. Export database directly as a binary Uint8Array byte array
                 const binaryData = db.export();
-
-                // 5. Wrap raw Uint8Array bytes inside a Blob
                 const blob = new Blob([binaryData], { type: 'application/x-sqlite3' });
 
-                // 6. Trigger download with .sqlite extension
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(blob);
                 link.download = `financeflow_${scope}_${timestamp}.sqlite`;
                 document.body.appendChild(link);
                 link.click();
 
-                // 7. Clean up memory
                 document.body.removeChild(link);
                 URL.revokeObjectURL(link.href);
                 db.close();
@@ -826,7 +830,7 @@
                     maintainAspectRatio: false,
                     layout: {
                         padding: {
-                            right: 50 // Extra padding on right to prevent text truncation
+                            right: 50
                         }
                     },
                     plugins: {
@@ -872,6 +876,11 @@
             const today = new Date(); today.setHours(0,0,0,0);
             const now = new Date();
             
+            // Read Owners
+            const trendOwnerFilter = document.getElementById('trendOwner').value;
+            const savingsOwnerFilter = document.getElementById('savingsOwner').value;
+
+            // Read Date Filters
             const startVal = document.getElementById('trendStart').value;
             const endVal = document.getElementById('trendEnd').value;
             let startDate = startVal ? new Date(startVal) : null;
@@ -897,6 +906,7 @@
                 const changeValue = isInc ? amt : -amt;
                 const tDate = parseLocal(t.created_at);
                 const isFuture = tDate > now;
+                const owner = t.owner || 'Mathias';
                 const dateKey = tDate.getFullYear() + '-' + String(tDate.getMonth() + 1).padStart(2, '0') + '-' + String(tDate.getDate()).padStart(2, '0');
 
                 if (!dailyData[dateKey]) dailyData[dateKey] = { inc: 0, exp: 0 };
@@ -904,31 +914,39 @@
 
                 if (t.is_savings) {
                     savingsPool += changeValue;
-                    runningSavingsBal += changeValue;
 
-                    let inSavingsRange = true;
-                    if (savStartDate && tDate < savStartDate) inSavingsRange = false;
-                    if (savEndDate && tDate > savEndDate) inSavingsRange = false;
+                    let matchesSavingsOwner = (savingsOwnerFilter === 'all' || owner === savingsOwnerFilter);
+                    if (matchesSavingsOwner) {
+                        runningSavingsBal += changeValue;
 
-                    if (inSavingsRange) {
-                        savingsTimeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningSavingsBal, isFuture });
+                        let inSavingsRange = true;
+                        if (savStartDate && tDate < savStartDate) inSavingsRange = false;
+                        if (savEndDate && tDate > savEndDate) inSavingsRange = false;
+
+                        if (inSavingsRange) {
+                            savingsTimeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningSavingsBal, isFuture });
+                        }
                     }
                 } else {
-                    runningBal += changeValue;
                     if (isFuture) {
                         futureTotal += changeValue;
                     } else {
                         netToday += changeValue;
-                        if (t.owner === 'Mathias') netMathias += changeValue;
-                        if (t.owner === 'Julia') netJulia += changeValue;
+                        if (owner === 'Mathias') netMathias += changeValue;
+                        if (owner === 'Julia') netJulia += changeValue;
                     }
 
-                    let inLiquidRange = true;
-                    if (startDate && tDate < startDate) inLiquidRange = false;
-                    if (endDate && tDate > endDate) inLiquidRange = false;
+                    let matchesLiquidOwner = (trendOwnerFilter === 'all' || owner === trendOwnerFilter);
+                    if (matchesLiquidOwner) {
+                        runningBal += changeValue;
 
-                    if (inLiquidRange) {
-                        liquidTimeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningBal, isFuture });
+                        let inLiquidRange = true;
+                        if (startDate && tDate < startDate) inLiquidRange = false;
+                        if (endDate && tDate > endDate) inLiquidRange = false;
+
+                        if (inLiquidRange) {
+                            liquidTimeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningBal, isFuture });
+                        }
                     }
                 }
             });
