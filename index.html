@@ -534,7 +534,7 @@
         <!-- LEFT: App Settings Button -->
         <button onclick="navigateToCard('card-settings')" title="App Settings" class="p-2.5 bg-sky-200 dark:bg-slate-700 hover:bg-sky-300 dark:hover:bg-slate-600 text-sky-800 dark:text-sky-300 rounded-full transition-all flex items-center justify-center">
             <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6-3.6 3.6z"/>
+                <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
             </svg>
         </button>
 
@@ -1416,14 +1416,14 @@
                     // Filter income totals by selected income means
                     if (selectedIncomeLabelIds.includes(String(t.label_id))) {
                         totalIncome += amt;
-                        const lname = t.labels?.name || labelMap[t.label_id] || 'Misc';
+                        const lname = t.labels?.name || labelMap[t.label_id] || 'Uncategorized';
                         labelIncomeTotals[lname] = (labelIncomeTotals[lname] || 0) + amt;
                     }
                 } else if (t.type === 'expense') {
                     // Filter expense totals by selected expense labels
                     if (selectedExpenseLabelIds.includes(String(t.label_id))) {
                         totalExpenses += amt;
-                        const lname = t.labels?.name || labelMap[t.label_id] || 'Misc';
+                        const lname = t.labels?.name || labelMap[t.label_id] || 'Uncategorized';
                         labelExpenseTotals[lname] = (labelExpenseTotals[lname] || 0) + amt;
                     }
                 }
@@ -1432,502 +1432,451 @@
             document.getElementById('labelReportTotalIncome').innerText = `$${totalIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('labelReportTotalExpenses').innerText = `$${totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
-            // Render Chart depending on mode (Income vs Expense)
-            const activeTotalsMap = (chartMode === 'income') ? labelIncomeTotals : labelExpenseTotals;
-            const sortedLabels = Object.keys(activeTotalsMap).sort((a,b) => activeTotalsMap[b] - activeTotalsMap[a]);
-            const chartValues = sortedLabels.map(l => activeTotalsMap[l]);
+            // Select dataset and formatting based on chosen Chart Display Mode
+            const activeTotals = (chartMode === 'income') ? labelIncomeTotals : labelExpenseTotals;
+            const chartLabel = (chartMode === 'income') ? 'Income Total' : 'Expense Total';
 
-            const isDark = document.documentElement.classList.contains('dark');
-            const textColor = isDark ? '#f8fafc' : '#0f172a';
-            const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
+            const sortedLabels = Object.keys(activeTotals).sort((a, b) => activeTotals[b] - activeTotals[a]);
+            const sortedValues = sortedLabels.map(l => activeTotals[l]);
+            const barColors = sortedLabels.map((_, idx) => labelColors[idx % labelColors.length]);
 
             if (labelBarChart) labelBarChart.destroy();
+
             const ctx = document.getElementById('labelBarChart').getContext('2d');
-            
+            if (sortedLabels.length === 0) {
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                return;
+            }
+
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? '#334155' : '#f1f5f9';
+            const labelColor = isDark ? '#cbd5e1' : '#334155';
+
             labelBarChart = new Chart(ctx, {
                 type: 'bar',
+                plugins: [ChartDataLabels],
                 data: {
                     labels: sortedLabels,
                     datasets: [{
-                        label: chartMode === 'income' ? 'Income Amount' : 'Expense Amount',
-                        data: chartValues,
-                        backgroundColor: chartMode === 'income' ? 'rgba(16, 185, 129, 0.85)' : 'rgba(239, 68, 68, 0.85)',
-                        borderColor: chartMode === 'income' ? '#059669' : '#dc2626',
-                        borderWidth: 1.5,
-                        borderRadius: 8
+                        label: chartLabel,
+                        data: sortedValues,
+                        backgroundColor: barColors,
+                        borderRadius: 8,
+                        borderSkipped: false
                     }]
                 },
-                plugins: [ChartDataLabels],
                 options: {
+                    indexAxis: 'y',
                     responsive: true,
                     maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            right: 50
+                        }
+                    },
                     plugins: {
                         legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { size: 11, weight: 'bold' },
+                            bodyFont: { size: 12 },
+                            displayColors: true,
+                            callbacks: {
+                                label: (ctx) => ` ${chartLabel}: $${ctx.parsed.x.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+                            }
+                        },
                         datalabels: {
                             anchor: 'end',
-                            align: 'top',
-                            color: textColor,
-                            font: { weight: 'bold', size: 10 },
-                            formatter: (value) => value > 0 ? '$' + Math.round(value).toLocaleString() : ''
+                            align: 'end',
+                            color: labelColor,
+                            font: {
+                                size: 10,
+                                weight: 'bold'
+                            },
+                            formatter: (value) => '$' + value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
                         }
                     },
                     scales: {
-                        x: {
-                            ticks: { color: textColor, font: { weight: 'bold', size: 10 } },
-                            grid: { display: false }
+                        x: { 
+                            ticks: { font: { size: 9 }, color: labelColor, callback: (value) => '$' + value },
+                            grid: { color: gridColor }
                         },
-                        y: {
-                            ticks: { color: textColor, font: { size: 10 } },
-                            grid: { color: gridColor },
-                            beginAtZero: true
+                        y: { 
+                            ticks: { font: { size: 10, weight: 'bold' }, color: labelColor },
+                            grid: { display: false }
                         }
                     }
                 }
             });
-        }
-
-        function renderFilteredHistory() {
-            const historyBody = document.getElementById('history-body');
-            const filtered = getFilteredTransactions();
-
-            if (filtered.length === 0) {
-                historyBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-xs text-slate-400 font-bold">No transactions found matching the selected filters.</td></tr>`;
-                return;
-            }
-
-            const now = new Date();
-            const labelMap = {};
-            globalLabelsCache.forEach(l => labelMap[l.id] = l.name);
-
-            historyBody.innerHTML = filtered.map(t => {
-                const tDate = parseLocal(t.created_at);
-                const isFuture = tDate > now;
-                const rowClass = isFuture ? 'future-row' : (t.is_savings ? 'savings-row' : (t.is_loan ? 'loans-row' : ''));
-                const labelName = t.labels?.name || labelMap[t.label_id] || 'Misc';
-                const ownerName = t.owner || 'Mathias';
-
-                return `
-                    <tr class="${rowClass} hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition-colors">
-                        <td class="p-3 text-xs">
-                            <div class="font-bold text-slate-800 dark:text-slate-200">${t.description || 'No Description'}</div>
-                            <div class="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                                <span>${tDate.toLocaleDateString([], {month:'short', day:'numeric'})} ${tDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-                                <span>•</span>
-                                <span class="font-bold text-indigo-500">${labelName}</span>
-                                <span>•</span>
-                                <span class="font-bold text-slate-500 dark:text-slate-400">${ownerName}</span>
-                            </div>
-                        </td>
-                        <td class="p-3 text-right">
-                            <span class="font-black text-xs ${t.type === 'income' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-100'}">
-                                ${t.type === 'income' ? '+' : '-'}$${parseFloat(t.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                            </span>
-                        </td>
-                        <td class="p-3 text-right w-20">
-                            <div class="flex items-center justify-end gap-1">
-                                <button onclick="openEditModal('${t.id}')" class="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-slate-500 dark:text-slate-400" title="Edit">
-                                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                                </button>
-                                <button onclick="deleteTransaction('${t.id}')" class="p-1 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded text-rose-500" title="Delete">
-                                    <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
         }
 
         async function calculateStats() {
-            const { data: transactions, error } = await supabaseClient
-                .from('transactions')
-                .select('*, labels(name)')
-                .order('created_at', { ascending: true });
-
-            if (error) {
-                console.error("Error fetching transactions:", error);
-                return;
-            }
-
+            const { data: transactions } = await supabaseClient.from('transactions').select('*, labels(*)').order('created_at', { ascending: true });
             globalTransactionsCache = transactions || [];
-            const labelMap = {};
-            globalLabelsCache.forEach(l => labelMap[l.id] = l.name);
-
+            
+            const today = new Date(); today.setHours(0,0,0,0);
             const now = new Date();
-            let netToday = 0;
-            let netMathias = 0;
-            let netJulia = 0;
-            let savingsPool = 0;
-            let loansPool = 0;
-            let futureTotal = 0;
+            
+            // Read Owners
+            const trendOwnerFilter = document.getElementById('trendOwner').value;
+            const savingsOwnerFilter = document.getElementById('savingsOwner').value;
+            const loansOwnerFilter = document.getElementById('loansOwner') ? document.getElementById('loansOwner').value : 'all';
 
-            transactions.forEach(t => {
-                const tDate = parseLocal(t.created_at);
-                const amt = parseFloat(t.amount);
-                const isInc = t.type === 'income';
-                const owner = t.owner || 'Mathias';
+            // Read Date Filters
+            const startVal = document.getElementById('trendStart').value;
+            const endVal = document.getElementById('trendEnd').value;
+            let startDate = startVal ? new Date(startVal) : null;
+            let endDate = endVal ? new Date(endVal) : null;
+            if (startDate) startDate.setHours(0,0,0,0);
+            if (endDate) endDate.setHours(23,59,59,999);
 
-                if (tDate <= now) {
-                    if (t.is_savings) {
-                        savingsPool += isInc ? amt : -amt;
-                    } else if (t.is_loan) {
-                        loansPool += isInc ? amt : -amt;
-                    } else {
-                        const val = isInc ? amt : -amt;
-                        netToday += val;
-                        if (owner === 'Mathias') netMathias += val;
-                        if (owner === 'Julia') netJulia += val;
-                    }
-                } else {
-                    futureTotal += isInc ? amt : -amt;
-                }
-            });
+            const savStartVal = document.getElementById('savingsStart').value;
+            const savEndVal = document.getElementById('savingsEnd').value;
+            let savStartDate = savStartVal ? new Date(savStartVal) : null;
+            let savEndDate = savEndVal ? new Date(savEndVal) : null;
+            if (savStartDate) savStartDate.setHours(0,0,0,0);
+            if (savEndDate) savEndDate.setHours(23,59,59,999);
 
-            document.getElementById('net-today').innerText = `$${netToday.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('net-mathias').innerText = `$${netMathias.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('net-julia').innerText = `$${netJulia.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('savings-pool').innerText = `$${savingsPool.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('loans-pool').innerText = `$${loansPool.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('future-total').innerText = `$${futureTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('prognosis').innerText = `$${(netToday + futureTotal).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-
-            renderFilteredHistory();
-            renderLabelReport();
-            calculateLabelExpense();
-            renderCalendar(transactions);
-
-            /* Helper function to generate Segment Dotted Line styles for Future Data */
-            const segmentDottedConfig = {
-                borderDash: (ctx) => {
-                    const p0 = ctx.p0;
-                    const p1 = ctx.p1;
-                    if (!p0 || !p1) return undefined;
-                    
-                    const p0IsFuture = p0.raw && p0.raw.isFuture;
-                    const p1IsFuture = p1.raw && p1.raw.isFuture;
-                    
-                    // If either point in the segment is in the future, render as dotted line
-                    return (p0IsFuture || p1IsFuture) ? [6, 6] : undefined;
-                }
-            };
-
-            /* ---------------- 1. LIQUID TREND CHART ---------------- */
-            const trendOwner = document.getElementById('trendOwner').value;
-            const trendStartVal = document.getElementById('trendStart').value;
-            const trendEndVal = document.getElementById('trendEnd').value;
-
-            let trendStartDate = trendStartVal ? new Date(trendStartVal) : null;
-            let trendEndDate = trendEndVal ? new Date(trendEndVal) : null;
-            if (trendStartDate) trendStartDate.setHours(0,0,0,0);
-            if (trendEndDate) trendEndDate.setHours(23,59,59,999);
-
-            let liquidRunning = 0;
-            const liquidPoints = [];
-
-            transactions.forEach(t => {
-                if (t.is_savings || t.is_loan) return;
-                const owner = t.owner || 'Mathias';
-                if (trendOwner !== 'all' && owner !== trendOwner) return;
-
-                const tDate = parseLocal(t.created_at);
-                const isInc = t.type === 'income';
-                const amt = parseFloat(t.amount);
-                liquidRunning += isInc ? amt : -amt;
-
-                if (trendStartDate && tDate < trendStartDate) return;
-                if (trendEndDate && tDate > trendEndDate) return;
-
-                const isFuture = tDate > now;
-                const dateLabel = tDate.toLocaleDateString([], {month:'short', day:'numeric'}) + ' ' + tDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-
-                liquidPoints.push({
-                    x: dateLabel,
-                    y: liquidRunning,
-                    isFuture: isFuture,
-                    type: t.type,
-                    rawAmount: amt,
-                    description: t.description,
-                    labelName: t.labels?.name || labelMap[t.label_id] || 'Misc',
-                    owner: owner
-                });
-            });
-
-            const isDark = document.documentElement.classList.contains('dark');
-            const textColor = isDark ? '#f8fafc' : '#0f172a';
-            const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
-
-            if (lineChart) lineChart.destroy();
-            const ctxLiquid = document.getElementById('lineChart').getContext('2d');
-            lineChart = new Chart(ctxLiquid, {
-                type: 'line',
-                data: {
-                    datasets: [{
-                        label: 'Liquid Net Balance',
-                        data: liquidPoints,
-                        borderColor: '#6366f1',
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                        borderWidth: 2.5,
-                        fill: true,
-                        tension: 0.2,
-                        pointRadius: liquidPoints.map(p => p.isFuture ? 5 : 3),
-                        pointHoverRadius: 7,
-                        pointBackgroundColor: liquidPoints.map(p => p.isFuture ? '#f59e0b' : '#6366f1'),
-                        segment: segmentDottedConfig
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    onClick: (e, elements) => {
-                        if (elements.length > 0) {
-                            const index = elements[0].index;
-                            showChartPointModal(liquidPoints[index]);
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        datalabels: { display: false }
-                    },
-                    scales: {
-                        x: { ticks: { color: textColor, font: { size: 9 } }, grid: { display: false } },
-                        y: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } }
-                    }
-                }
-            });
-
-            /* ---------------- 2. SAVINGS TREND CHART ---------------- */
-            const savingsOwner = document.getElementById('savingsOwner').value;
-            const savingsStartVal = document.getElementById('savingsStart').value;
-            const savingsEndVal = document.getElementById('savingsEnd').value;
-
-            let savingsStartDate = savingsStartVal ? new Date(savingsStartVal) : null;
-            let savingsEndDate = savingsEndVal ? new Date(savingsEndVal) : null;
-            if (savingsStartDate) savingsStartDate.setHours(0,0,0,0);
-            if (savingsEndDate) savingsEndDate.setHours(23,59,59,999);
-
-            let savingsRunning = 0;
-            const savingsPoints = [];
-
-            transactions.forEach(t => {
-                if (!t.is_savings) return;
-                const owner = t.owner || 'Mathias';
-                if (savingsOwner !== 'all' && owner !== savingsOwner) return;
-
-                const tDate = parseLocal(t.created_at);
-                const isInc = t.type === 'income';
-                const amt = parseFloat(t.amount);
-                savingsRunning += isInc ? amt : -amt;
-
-                if (savingsStartDate && tDate < savingsStartDate) return;
-                if (savingsEndDate && tDate > savingsEndDate) return;
-
-                const isFuture = tDate > now;
-                const dateLabel = tDate.toLocaleDateString([], {month:'short', day:'numeric'}) + ' ' + tDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-
-                savingsPoints.push({
-                    x: dateLabel,
-                    y: savingsRunning,
-                    isFuture: isFuture,
-                    type: t.type,
-                    rawAmount: amt,
-                    description: t.description,
-                    labelName: t.labels?.name || labelMap[t.label_id] || 'Savings',
-                    owner: owner
-                });
-            });
-
-            if (savingsChart) savingsChart.destroy();
-            const ctxSavings = document.getElementById('savingsChart').getContext('2d');
-            savingsChart = new Chart(ctxSavings, {
-                type: 'line',
-                data: {
-                    datasets: [{
-                        label: 'Savings Balance',
-                        data: savingsPoints,
-                        borderColor: '#0284c7',
-                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
-                        borderWidth: 2.5,
-                        fill: true,
-                        tension: 0.2,
-                        pointRadius: savingsPoints.map(p => p.isFuture ? 5 : 3),
-                        pointHoverRadius: 7,
-                        pointBackgroundColor: savingsPoints.map(p => p.isFuture ? '#f59e0b' : '#0284c7'),
-                        segment: segmentDottedConfig
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    onClick: (e, elements) => {
-                        if (elements.length > 0) {
-                            const index = elements[0].index;
-                            showChartPointModal(savingsPoints[index]);
-                        }
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        datalabels: { display: false }
-                    },
-                    scales: {
-                        x: { ticks: { color: textColor, font: { size: 9 } }, grid: { display: false } },
-                        y: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } }
-                    }
-                }
-            });
-
-            /* ---------------- 3. LOANS TREND CHART ---------------- */
-            const loansOwner = document.getElementById('loansOwner').value;
             const loansStartVal = document.getElementById('loansStart').value;
             const loansEndVal = document.getElementById('loansEnd').value;
-
             let loansStartDate = loansStartVal ? new Date(loansStartVal) : null;
             let loansEndDate = loansEndVal ? new Date(loansEndVal) : null;
             if (loansStartDate) loansStartDate.setHours(0,0,0,0);
             if (loansEndDate) loansEndDate.setHours(23,59,59,999);
 
-            let loansRunning = 0;
-            const loansPoints = [];
+            let netToday = 0, netMathias = 0, netJulia = 0;
+            let futureTotal = 0, savingsPool = 0, loansPool = 0, runningBal = 0, runningSavingsBal = 0, runningLoansBal = 0;
+            const liquidTimeline = [], savingsTimeline = [], loansTimeline = [];
+            const dailyData = {};
 
-            transactions.forEach(t => {
-                if (!t.is_loan) return;
-                const owner = t.owner || 'Mathias';
-                if (loansOwner !== 'all' && owner !== loansOwner) return;
-
-                const tDate = parseLocal(t.created_at);
-                const isInc = t.type === 'income';
+            globalTransactionsCache.forEach(t => {
                 const amt = parseFloat(t.amount);
-                loansRunning += isInc ? amt : -amt;
-
-                if (loansStartDate && tDate < loansStartDate) return;
-                if (loansEndDate && tDate > loansEndDate) return;
-
+                const isInc = t.type === 'income';
+                const changeValue = isInc ? amt : -amt;
+                const tDate = parseLocal(t.created_at);
                 const isFuture = tDate > now;
-                const dateLabel = tDate.toLocaleDateString([], {month:'short', day:'numeric'}) + ' ' + tDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                const owner = t.owner || 'Mathias';
+                const dateKey = tDate.getFullYear() + '-' + String(tDate.getMonth() + 1).padStart(2, '0') + '-' + String(tDate.getDate()).padStart(2, '0');
+                const labelName = t.labels?.name || 'Uncategorized';
 
-                loansPoints.push({
-                    x: dateLabel,
-                    y: loansRunning,
-                    isFuture: isFuture,
-                    type: t.type,
-                    rawAmount: amt,
-                    description: t.description,
-                    labelName: t.labels?.name || labelMap[t.label_id] || 'Loan',
-                    owner: owner
-                });
+                if (!dailyData[dateKey]) dailyData[dateKey] = { inc: 0, exp: 0 };
+                if (isInc) dailyData[dateKey].inc += amt; else dailyData[dateKey].exp += amt;
+
+                if (t.is_loan) {
+                    loansPool += changeValue;
+
+                    let matchesLoansOwner = (loansOwnerFilter === 'all' || owner === loansOwnerFilter);
+                    if (matchesLoansOwner) {
+                        runningLoansBal += changeValue;
+
+                        let inLoansRange = true;
+                        if (loansStartDate && tDate < loansStartDate) inLoansRange = false;
+                        if (loansEndDate && tDate > loansEndDate) inLoansRange = false;
+
+                        if (inLoansRange) {
+                            loansTimeline.push({ 
+                                x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), 
+                                y: runningLoansBal, 
+                                isFuture,
+                                type: t.type,
+                                rawAmount: amt,
+                                description: t.description,
+                                owner: owner,
+                                labelName: labelName
+                            });
+                        }
+                    }
+                } else if (t.is_savings) {
+                    savingsPool += changeValue;
+
+                    let matchesSavingsOwner = (savingsOwnerFilter === 'all' || owner === savingsOwnerFilter);
+                    if (matchesSavingsOwner) {
+                        runningSavingsBal += changeValue;
+
+                        let inSavingsRange = true;
+                        if (savStartDate && tDate < savStartDate) inSavingsRange = false;
+                        if (savEndDate && tDate > savEndDate) inSavingsRange = false;
+
+                        if (inSavingsRange) {
+                            savingsTimeline.push({ 
+                                x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), 
+                                y: runningSavingsBal, 
+                                isFuture,
+                                type: t.type,
+                                rawAmount: amt,
+                                description: t.description,
+                                owner: owner,
+                                labelName: labelName
+                            });
+                        }
+                    }
+                } else {
+                    if (isFuture) {
+                        futureTotal += changeValue;
+                    } else {
+                        netToday += changeValue;
+                        if (owner === 'Mathias') netMathias += changeValue;
+                        if (owner === 'Julia') netJulia += changeValue;
+                    }
+
+                    let matchesLiquidOwner = (trendOwnerFilter === 'all' || owner === trendOwnerFilter);
+                    if (matchesLiquidOwner) {
+                        runningBal += changeValue;
+
+                        let inLiquidRange = true;
+                        if (startDate && tDate < startDate) inLiquidRange = false;
+                        if (endDate && tDate > endDate) inLiquidRange = false;
+
+                        if (inLiquidRange) {
+                            liquidTimeline.push({ 
+                                x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), 
+                                y: runningBal, 
+                                isFuture,
+                                type: t.type,
+                                rawAmount: amt,
+                                description: t.description,
+                                owner: owner,
+                                labelName: labelName
+                            });
+                        }
+                    }
+                }
             });
 
-            if (loansChart) loansChart.destroy();
-            const ctxLoans = document.getElementById('loansChart').getContext('2d');
-            loansChart = new Chart(ctxLoans, {
+            document.getElementById('net-today').innerText = `$${netToday.toLocaleString()}`;
+            document.getElementById('net-mathias').innerText = `$${netMathias.toLocaleString()}`;
+            document.getElementById('net-julia').innerText = `$${netJulia.toLocaleString()}`;
+            document.getElementById('savings-pool').innerText = `$${savingsPool.toLocaleString()}`;
+            document.getElementById('loans-pool').innerText = `$${loansPool.toLocaleString()}`;
+            document.getElementById('future-total').innerText = `$${futureTotal.toLocaleString()}`;
+            document.getElementById('prognosis').innerText = `$${(netToday + futureTotal).toLocaleString()}`;
+
+            updateLineChart(liquidTimeline);
+            updateSavingsChart(savingsTimeline);
+            updateLoansChart(loansTimeline);
+            renderLabelReport();
+            renderCalendar(dailyData);
+            renderFilteredHistory();
+            calculateLabelExpense();
+        }
+
+        function renderFilteredHistory() {
+            const historyBody = document.getElementById('history-body');
+            historyBody.innerHTML = '';
+            
+            const filteredTransactions = getFilteredTransactions();
+            const now = new Date();
+
+            for (let i = filteredTransactions.length - 1; i >= 0; i--) {
+                const t = filteredTransactions[i];
+                const tDate = parseLocal(t.created_at);
+                const owner = t.owner || 'Mathias';
+
+                const amt = parseFloat(t.amount);
+                const isInc = t.type === 'income';
+                const isFuture = tDate > now;
+                const labelName = t.labels?.name || 'Misc';
+
+                const timeString = tDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+                historyBody.insertAdjacentHTML('beforeend', `
+                    <tr class="${isFuture ? 'future-row' : ''} ${t.is_savings ? 'savings-row' : ''} ${t.is_loan ? 'loans-row' : ''}">
+                        <td class="px-4 py-3 text-[9px] font-black text-slate-400 leading-tight">
+                            ${tDate.toLocaleDateString()}<br>
+                            <span class="text-slate-500 dark:text-slate-400 font-bold">${timeString}</span><br>
+                            ${isFuture ? '<span class="text-indigo-600 dark:text-indigo-400 font-bold uppercase text-[7px]">[FUTURE]</span>' : '<span class="text-emerald-600 dark:text-emerald-400 font-bold uppercase text-[7px]">[OK]</span>'}
+                        </td>
+                        <td class="px-4 py-3 text-left font-black text-xs ${isInc ? 'text-emerald-500' : 'text-rose-500'}">
+                            $${amt.toLocaleString()}
+                        </td>
+                        <td class="px-4 py-3">
+                            <div class="font-bold text-slate-800 dark:text-slate-100 text-xs">${t.description}</div>
+                            <div class="text-[8px] uppercase font-black text-slate-400">${labelName} • <span class="text-slate-600 dark:text-slate-300">${owner}</span></div>
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <div class="flex items-center justify-end gap-3">
+                                ${isFuture ? `<button onclick="confirmTransaction('${t.id}')" class="text-indigo-600 dark:text-indigo-400 font-black text-[9px]">CONFIRM</button>` : ''}
+                                <button onclick="openEditModal('${t.id}')" class="text-slate-400 text-[9px] font-black uppercase">Edit</button>
+                                <button onclick="deleteTransaction('${t.id}')" class="text-slate-200 dark:text-slate-500 text-lg">&times;</button>
+                            </div>
+                        </td>
+                    </tr>`);
+            }
+        }
+
+        function renderCalendar(dailyData) {
+            const year = currentViewDate.getFullYear(), month = currentViewDate.getMonth();
+            const now = new Date();
+            const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            
+            document.getElementById('calendar-month-name').innerText = currentViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            
+            const firstDayOfMonth = new Date(year, month, 1);
+            const calStart = new Date(firstDayOfMonth);
+            calStart.setDate(calStart.getDate() - firstDayOfMonth.getDay());
+
+            const calBody = document.getElementById('calendar-body');
+            const headers = Array.from(calBody.querySelectorAll('.calendar-header'));
+            calBody.innerHTML = '';
+            headers.forEach(h => calBody.appendChild(h));
+
+            for (let i = 0; i < 42; i++) {
+                const dateObj = new Date(calStart);
+                dateObj.setDate(dateObj.getDate() + i);
+                const dateKey = dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
+                const dayIdx = dateObj.getDay();
+                
+                const dayDiv = document.createElement('div');
+                dayDiv.className = `calendar-day ${dateObj.getMonth() !== month ? 'not-current-month' : ''} ${(dayIdx === 0 || dayIdx === 6) ? 'weekend' : ''} ${dateKey === todayStr ? 'today-border' : ''}`;
+                
+                let content = `<span class="day-label">${dateObj.getDate()}</span>`;
+                if (dailyData[dateKey]) {
+                    if (dailyData[dateKey].inc > 0) content += `<span class="cal-income">${Math.round(dailyData[dateKey].inc).toLocaleString()}</span>`;
+                    if (dailyData[dateKey].exp > 0) content += `<span class="cal-expense">${Math.round(dailyData[dateKey].exp).toLocaleString()}</span>`;
+                }
+                dayDiv.innerHTML = content;
+                calBody.appendChild(dayDiv);
+                if (i >= 34 && dateObj.getMonth() !== month && dayIdx === 6) break;
+            }
+        }
+
+        /* ---------------- DYNAMIC LINE CHARTS WITH SEGMENTS & CLICK POPUPS ---------------- */
+        function updateLineChart(timeline) {
+            if (lineChart) lineChart.destroy();
+            const ctx = document.getElementById('lineChart').getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? '#334155' : '#f1f5f9';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+
+            lineChart = new Chart(ctx, {
                 type: 'line',
                 data: {
+                    labels: timeline.map(t => t.x),
                     datasets: [{
-                        label: 'Loans Balance',
-                        data: loansPoints,
-                        borderColor: '#d97706',
-                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                        borderWidth: 2.5,
-                        fill: true,
+                        label: 'Liquid Net Balance',
+                        data: timeline.map(t => t.y),
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
                         tension: 0.2,
-                        pointRadius: loansPoints.map(p => p.isFuture ? 5 : 3),
-                        pointHoverRadius: 7,
-                        pointBackgroundColor: loansPoints.map(p => p.isFuture ? '#ef4444' : '#d97706'),
-                        segment: segmentDottedConfig
+                        fill: false,
+                        segment: {
+                            borderColor: ctx => {
+                                const p0 = ctx.p0.parsed.y;
+                                const p1 = ctx.p1.parsed.y;
+                                return p1 >= p0 ? '#10b981' : '#ef4444'; // Green if up, Red if down
+                            }
+                        }
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    onClick: (e, elements) => {
-                        if (elements.length > 0) {
-                            const index = elements[0].index;
-                            showChartPointModal(loansPoints[index]);
+                    plugins: { legend: { display: false } },
+                    onClick: (evt, activeElements) => {
+                        if (activeElements && activeElements.length > 0) {
+                            const index = activeElements[0].index;
+                            showChartPointModal(timeline[index]);
                         }
                     },
-                    plugins: {
-                        legend: { display: false },
-                        datalabels: { display: false }
-                    },
                     scales: {
-                        x: { ticks: { color: textColor, font: { size: 9 } }, grid: { display: false } },
-                        y: { ticks: { color: textColor, font: { size: 10 } }, grid: { color: gridColor } }
+                        x: { grid: { display: false }, ticks: { color: textColor } },
+                        y: { grid: { color: gridColor }, ticks: { color: textColor } }
                     }
                 }
             });
         }
 
-        /* ---------------- MONTHLY CALENDAR VIEW ---------------- */
-        function renderCalendar(transactions) {
-            const year = currentViewDate.getFullYear();
-            const month = currentViewDate.getMonth();
+        function updateSavingsChart(timeline) {
+            if (savingsChart) savingsChart.destroy();
+            const ctx = document.getElementById('savingsChart').getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? '#334155' : '#f1f5f9';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
 
-            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-            document.getElementById('calendar-month-name').innerText = `${monthNames[month]} ${year}`;
-
-            const firstDay = new Date(year, month, 1);
-            const lastDay = new Date(year, month + 1, 0);
-
-            const startingDayOfWeek = firstDay.getDay(); 
-            const totalDays = lastDay.getDate();
-
-            const calendarBody = document.getElementById('calendar-body');
-            calendarBody.innerHTML = `
-                <div class="calendar-header">S</div><div class="calendar-header">M</div><div class="calendar-header">T</div>
-                <div class="calendar-header">W</div><div class="calendar-header">T</div><div class="calendar-header">F</div><div class="calendar-header">S</div>
-            `;
-
-            // Previous month padding days
-            const prevMonthLastDay = new Date(year, month, 0).getDate();
-            for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-                const dayNum = prevMonthLastDay - i;
-                const cell = document.createElement('div');
-                cell.className = 'calendar-day not-current-month';
-                cell.innerHTML = `<span class="day-label">${dayNum}</span>`;
-                calendarBody.appendChild(cell);
-            }
-
-            const today = new Date();
-
-            // Current month days
-            for (let day = 1; day <= totalDays; day++) {
-                const cellDate = new Date(year, month, day);
-                const dayOfWeek = cellDate.getDay();
-                const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-                const isToday = (today.getFullYear() === year && today.getMonth() === month && today.getDate() === day);
-
-                let dayIncome = 0;
-                let dayExpense = 0;
-
-                transactions.forEach(t => {
-                    const tDate = parseLocal(t.created_at);
-                    if (tDate.getFullYear() === year && tDate.getMonth() === month && tDate.getDate() === day) {
-                        const amt = parseFloat(t.amount);
-                        if (t.type === 'income') dayIncome += amt;
-                        else if (t.type === 'expense') dayExpense += amt;
+            savingsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeline.map(t => t.x),
+                    datasets: [{
+                        label: 'Savings Balance',
+                        data: timeline.map(t => t.y),
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        tension: 0.2,
+                        fill: false,
+                        segment: {
+                            borderColor: ctx => {
+                                const p0 = ctx.p0.parsed.y;
+                                const p1 = ctx.p1.parsed.y;
+                                return p1 >= p0 ? '#38bdf8' : '#0284c7'; // Lighter Sky Blue for Income, Darker Sky Blue for Expense
+                            }
+                        }
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    onClick: (evt, activeElements) => {
+                        if (activeElements && activeElements.length > 0) {
+                            const index = activeElements[0].index;
+                            showChartPointModal(timeline[index]);
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: textColor } },
+                        y: { grid: { color: gridColor }, ticks: { color: textColor } }
                     }
-                });
+                }
+            });
+        }
 
-                const cell = document.createElement('div');
-                cell.className = `calendar-day ${isWeekend ? 'weekend' : ''} ${isToday ? 'today-border' : ''}`;
+        function updateLoansChart(timeline) {
+            if (loansChart) loansChart.destroy();
+            const ctx = document.getElementById('loansChart').getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? '#334155' : '#f1f5f9';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
 
-                let html = `<span class="day-label">${day}</span>`;
-                if (dayIncome > 0) html += `<span class="cal-income">+$${Math.round(dayIncome)}</span>`;
-                if (dayExpense > 0) html += `<span class="cal-expense">-$${Math.round(dayExpense)}</span>`;
-
-                cell.innerHTML = html;
-                calendarBody.appendChild(cell);
-            }
-
-            // Next month padding days to complete calendar grid rows
-            const totalCellsSoFar = startingDayOfWeek + totalDays;
-            const remainingCells = (7 - (totalCellsSoFar % 7)) % 7;
-
-            for (let i = 1; i <= remainingCells; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'calendar-day not-current-month';
-                cell.innerHTML = `<span class="day-label">${i}</span>`;
-                calendarBody.appendChild(cell);
-            }
+            loansChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeline.map(t => t.x),
+                    datasets: [{
+                        label: 'Loans Balance',
+                        data: timeline.map(t => t.y),
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        tension: 0.2,
+                        fill: false,
+                        segment: {
+                            borderColor: ctx => {
+                                const p0 = ctx.p0.parsed.y;
+                                const p1 = ctx.p1.parsed.y;
+                                return p1 >= p0 ? '#f59e0b' : '#b45309'; // Amber color gradient
+                            }
+                        }
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    onClick: (evt, activeElements) => {
+                        if (activeElements && activeElements.length > 0) {
+                            const index = activeElements[0].index;
+                            showChartPointModal(timeline[index]);
+                        }
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: textColor } },
+                        y: { grid: { color: gridColor }, ticks: { color: textColor } }
+                    }
+                }
+            });
         }
 
         window.onload = init;
