@@ -115,9 +115,15 @@
                             </select>
                         </div>
 
-                        <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
-                            <input id="is_savings" type="checkbox" class="w-4 h-4 accent-sky-500">
-                            <label for="is_savings" class="text-[9px] font-black text-slate-500 uppercase">Savings</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
+                                <input id="is_savings" type="checkbox" onchange="if(this.checked) document.getElementById('is_loan').checked = false;" class="w-4 h-4 accent-sky-500">
+                                <label for="is_savings" class="text-[9px] font-black text-slate-500 uppercase cursor-pointer">Savings</label>
+                            </div>
+                            <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
+                                <input id="is_loan" type="checkbox" onchange="if(this.checked) document.getElementById('is_savings').checked = false;" class="w-4 h-4 accent-amber-500">
+                                <label for="is_loan" class="text-[9px] font-black text-slate-500 uppercase cursor-pointer">Loan</label>
+                            </div>
                         </div>
                         <button onclick="addTransaction()" class="w-full bg-slate-900 text-white font-black py-3 rounded-xl hover:bg-black shadow-lg text-sm">Save Entry</button>
                     </div>
@@ -456,7 +462,17 @@
                     </select>
                 </div>
 
-                <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl"><input id="edit_savings" type="checkbox" class="w-5 h-5"><label class="text-[10px] font-black uppercase text-slate-500">Savings</label></div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
+                        <input id="edit_savings" type="checkbox" onchange="if(this.checked) document.getElementById('edit_loan').checked = false;" class="w-5 h-5 accent-sky-500">
+                        <label for="edit_savings" class="text-[10px] font-black uppercase text-slate-500 cursor-pointer">Savings</label>
+                    </div>
+                    <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
+                        <input id="edit_loan" type="checkbox" onchange="if(this.checked) document.getElementById('edit_savings').checked = false;" class="w-5 h-5 accent-amber-500">
+                        <label for="edit_loan" class="text-[10px] font-black uppercase text-slate-500 cursor-pointer">Loan</label>
+                    </div>
+                </div>
+
                 <div class="flex gap-2 pt-4">
                     <button onclick="closeEditModal()" class="flex-1 py-3 font-bold text-slate-400">Cancel</button>
                     <button onclick="saveEdit()" class="flex-1 py-3 bg-indigo-600 text-white font-black rounded-xl shadow-lg">Save</button>
@@ -761,18 +777,23 @@
             const timeVal = document.getElementById('time').value || '00:00';
             const localDateTime = new Date(`${dateVal}T${timeVal}`);
 
+            const isLoanChecked = document.getElementById('is_loan').checked;
+            const ownerVal = isLoanChecked ? 'Loans' : document.getElementById('owner_select').value;
+
             const payload = {
                 description: document.getElementById('desc').value,
                 amount: parseFloat(document.getElementById('amount').value),
                 type: document.getElementById('type').value,
                 label_id: document.getElementById('label_select').value,
-                owner: document.getElementById('owner_select').value,
+                owner: ownerVal,
                 is_savings: document.getElementById('is_savings').checked,
                 created_at: localDateTime.toISOString()
             };
             await supabaseClient.from('transactions').insert([payload]);
             document.getElementById('desc').value = ''; 
             document.getElementById('amount').value = '';
+            document.getElementById('is_savings').checked = false;
+            document.getElementById('is_loan').checked = false;
             
             const resetNow = new Date();
             document.getElementById('time').value = `${String(resetNow.getHours()).padStart(2, '0')}:${String(resetNow.getMinutes()).padStart(2, '0')}`;
@@ -872,6 +893,7 @@
             document.getElementById('edit_label').value = t.label_id;
             document.getElementById('edit_owner').value = t.owner || 'Mathias';
             document.getElementById('edit_savings').checked = t.is_savings;
+            document.getElementById('edit_loan').checked = (t.owner === 'Loans');
             document.getElementById('editModal').classList.add('active');
             document.body.classList.add('modal-active');
         }
@@ -884,12 +906,15 @@
             const timeVal = document.getElementById('edit_time').value || '00:00';
             const localDateTime = new Date(`${dateVal}T${timeVal}`);
 
+            const isLoanChecked = document.getElementById('edit_loan').checked;
+            const ownerVal = isLoanChecked ? 'Loans' : document.getElementById('edit_owner').value;
+
             const payload = {
                 description: document.getElementById('edit_desc').value, 
                 amount: parseFloat(document.getElementById('edit_amount').value),
                 type: document.getElementById('edit_type').value, 
                 label_id: document.getElementById('edit_label').value,
-                owner: document.getElementById('edit_owner').value,
+                owner: ownerVal,
                 is_savings: document.getElementById('edit_savings').checked, 
                 created_at: localDateTime.toISOString()
             };
