@@ -111,7 +111,6 @@
                             <select id="owner_select" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm bg-slate-50 font-bold text-slate-700 outline-none">
                                 <option value="Mathias">Mathias</option>
                                 <option value="Julia">Julia</option>
-                                <option value="Loans">Loans Pool</option>
                             </select>
                         </div>
 
@@ -121,7 +120,7 @@
                                 <label for="is_savings" class="text-[9px] font-black text-slate-500 uppercase cursor-pointer">Savings</label>
                             </div>
                             <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
-                                <input id="is_loan" type="checkbox" onchange="if(this.checked) { document.getElementById('is_savings').checked = false; document.getElementById('owner_select').value = 'Loans'; }" class="w-4 h-4 accent-amber-500">
+                                <input id="is_loan" type="checkbox" onchange="if(this.checked) document.getElementById('is_savings').checked = false;" class="w-4 h-4 accent-amber-500">
                                 <label for="is_loan" class="text-[9px] font-black text-slate-500 uppercase cursor-pointer">Loan</label>
                             </div>
                         </div>
@@ -250,7 +249,6 @@
                                 <option value="all">All Owners</option>
                                 <option value="Mathias">Mathias</option>
                                 <option value="Julia">Julia</option>
-                                <option value="Loans">Loans</option>
                             </select>
                         </div>
                         <div>
@@ -316,6 +314,11 @@
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <h3 class="font-bold text-amber-600 text-[10px] uppercase tracking-widest">Loans Trend</h3>
                         <div class="flex flex-wrap items-center gap-2 text-[10px] font-black">
+                            <select id="loansOwner" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold text-slate-700">
+                                <option value="all">All Owners</option>
+                                <option value="Mathias">Mathias</option>
+                                <option value="Julia">Julia</option>
+                            </select>
                             <span class="text-slate-400 uppercase">Start:</span>
                             <input id="loansStart" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
                             <span class="text-slate-400 uppercase">End:</span>
@@ -414,7 +417,6 @@
                                     <option value="all">All Owners</option>
                                     <option value="Mathias">Mathias</option>
                                     <option value="Julia">Julia</option>
-                                    <option value="Loans">Loans</option>
                                 </select>
                             </div>
                             <div class="w-full sm:w-auto">
@@ -472,7 +474,6 @@
                     <select id="edit_owner" class="w-full border p-3 rounded-xl bg-slate-50 font-bold text-slate-700 outline-none">
                         <option value="Mathias">Mathias</option>
                         <option value="Julia">Julia</option>
-                        <option value="Loans">Loans Pool</option>
                     </select>
                 </div>
 
@@ -482,7 +483,7 @@
                         <label for="edit_savings" class="text-[10px] font-black uppercase text-slate-500 cursor-pointer">Savings</label>
                     </div>
                     <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
-                        <input id="edit_loan" type="checkbox" onchange="if(this.checked) { document.getElementById('edit_savings').checked = false; document.getElementById('edit_owner').value = 'Loans'; }" class="w-5 h-5 accent-amber-500">
+                        <input id="edit_loan" type="checkbox" onchange="if(this.checked) document.getElementById('edit_savings').checked = false;" class="w-5 h-5 accent-amber-500">
                         <label for="edit_loan" class="text-[10px] font-black uppercase text-slate-500 cursor-pointer">Loan</label>
                     </div>
                 </div>
@@ -698,7 +699,7 @@
             const timestamp = new Date().toISOString().slice(0, 10);
 
             if (format === 'csv') {
-                const headers = ["ID", "Date", "Time", "Description", "Amount", "Type", "Label", "Label_ID", "Owner", "Is_Savings", "Created_At_UTC"];
+                const headers = ["ID", "Date", "Time", "Description", "Amount", "Type", "Label", "Label_ID", "Owner", "Is_Savings", "Is_Loan", "Created_At_UTC"];
                 const csvRows = [headers.join(",")];
 
                 records.forEach(t => {
@@ -714,7 +715,7 @@
 
                     const row = [
                         t.id, dateStr, timeStr, cleanDesc, t.amount, t.type, cleanLabel,
-                        t.label_id || '', t.owner || 'Mathias', t.is_savings ? 'TRUE' : 'FALSE', t.created_at
+                        t.label_id || '', t.owner || 'Mathias', t.is_savings ? 'TRUE' : 'FALSE', t.is_loan ? 'TRUE' : 'FALSE', t.created_at
                     ];
                     csvRows.push(row.join(","));
                 });
@@ -739,13 +740,14 @@
                         type TEXT,
                         label_id TEXT,
                         owner TEXT,
-                        is_savings INTEGER
+                        is_savings INTEGER,
+                        is_loan INTEGER
                     );
                 `);
 
                 const stmt = db.prepare(`
-                    INSERT INTO transactions (id, created_at, description, amount, type, label_id, owner, is_savings)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+                    INSERT INTO transactions (id, created_at, description, amount, type, label_id, owner, is_savings, is_loan)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
                 `);
 
                 records.forEach(t => {
@@ -757,7 +759,8 @@
                         t.type,
                         t.label_id ? String(t.label_id) : null,
                         t.owner || 'Mathias',
-                        t.is_savings ? 1 : 0
+                        t.is_savings ? 1 : 0,
+                        t.is_loan ? 1 : 0
                     ]);
                 });
                 stmt.free();
@@ -792,16 +795,14 @@
             const timeVal = document.getElementById('time').value || '00:00';
             const localDateTime = new Date(`${dateVal}T${timeVal}`);
 
-            const isLoanChecked = document.getElementById('is_loan').checked;
-            const ownerVal = isLoanChecked ? 'Loans' : document.getElementById('owner_select').value;
-
             const payload = {
                 description: document.getElementById('desc').value,
                 amount: parseFloat(document.getElementById('amount').value),
                 type: document.getElementById('type').value,
                 label_id: document.getElementById('label_select').value,
-                owner: ownerVal,
+                owner: document.getElementById('owner_select').value,
                 is_savings: document.getElementById('is_savings').checked,
+                is_loan: document.getElementById('is_loan').checked,
                 created_at: localDateTime.toISOString()
             };
             await supabaseClient.from('transactions').insert([payload]);
@@ -841,9 +842,12 @@
             const fromDesc = userDesc ? `Transfer to ${toAcc}: ${userDesc}` : `Transfer to ${toAcc}`;
             const toDesc = userDesc ? `Transfer from ${fromAcc}: ${userDesc}` : `Transfer from ${fromAcc}`;
 
-            // Resolve owners & savings settings
-            const fromOwner = fromAcc;
-            const toOwner = toAcc;
+            // Resolve owners
+            let fromOwner = fromAcc;
+            let toOwner = toAcc;
+
+            if (fromAcc === 'Savings' || fromAcc === 'Loans') fromOwner = 'Mathias';
+            if (toAcc === 'Savings' || toAcc === 'Loans') toOwner = 'Mathias';
 
             // Entry 1: Outflow (Expense)
             const outflowPayload = {
@@ -853,6 +857,7 @@
                 label_id: transferLabel,
                 owner: fromOwner,
                 is_savings: fromAcc === 'Savings',
+                is_loan: fromAcc === 'Loans',
                 created_at: localDateTime
             };
 
@@ -864,6 +869,7 @@
                 label_id: transferLabel,
                 owner: toOwner,
                 is_savings: toAcc === 'Savings',
+                is_loan: toAcc === 'Loans',
                 created_at: localDateTime
             };
 
@@ -907,8 +913,8 @@
             document.getElementById('edit_type').value = t.type;
             document.getElementById('edit_label').value = t.label_id;
             document.getElementById('edit_owner').value = t.owner || 'Mathias';
-            document.getElementById('edit_savings').checked = t.is_savings;
-            document.getElementById('edit_loan').checked = (t.owner === 'Loans');
+            document.getElementById('edit_savings').checked = !!t.is_savings;
+            document.getElementById('edit_loan').checked = !!t.is_loan;
             document.getElementById('editModal').classList.add('active');
             document.body.classList.add('modal-active');
         }
@@ -921,16 +927,14 @@
             const timeVal = document.getElementById('edit_time').value || '00:00';
             const localDateTime = new Date(`${dateVal}T${timeVal}`);
 
-            const isLoanChecked = document.getElementById('edit_loan').checked;
-            const ownerVal = isLoanChecked ? 'Loans' : document.getElementById('edit_owner').value;
-
             const payload = {
                 description: document.getElementById('edit_desc').value, 
                 amount: parseFloat(document.getElementById('edit_amount').value),
                 type: document.getElementById('edit_type').value, 
                 label_id: document.getElementById('edit_label').value,
-                owner: ownerVal,
+                owner: document.getElementById('edit_owner').value,
                 is_savings: document.getElementById('edit_savings').checked, 
+                is_loan: document.getElementById('edit_loan').checked,
                 created_at: localDateTime.toISOString()
             };
             await supabaseClient.from('transactions').update(payload).eq('id', id);
@@ -1140,6 +1144,7 @@
             // Read Owners
             const trendOwnerFilter = document.getElementById('trendOwner').value;
             const savingsOwnerFilter = document.getElementById('savingsOwner').value;
+            const loansOwnerFilter = document.getElementById('loansOwner') ? document.getElementById('loansOwner').value : 'all';
 
             // Read Date Filters
             const startVal = document.getElementById('trendStart').value;
@@ -1180,16 +1185,20 @@
                 if (!dailyData[dateKey]) dailyData[dateKey] = { inc: 0, exp: 0 };
                 if (isInc) dailyData[dateKey].inc += amt; else dailyData[dateKey].exp += amt;
 
-                if (owner === 'Loans') {
+                if (t.is_loan) {
                     loansPool += changeValue;
-                    runningLoansBal += changeValue;
 
-                    let inLoansRange = true;
-                    if (loansStartDate && tDate < loansStartDate) inLoansRange = false;
-                    if (loansEndDate && tDate > loansEndDate) inLoansRange = false;
+                    let matchesLoansOwner = (loansOwnerFilter === 'all' || owner === loansOwnerFilter);
+                    if (matchesLoansOwner) {
+                        runningLoansBal += changeValue;
 
-                    if (inLoansRange) {
-                        loansTimeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningLoansBal, isFuture });
+                        let inLoansRange = true;
+                        if (loansStartDate && tDate < loansStartDate) inLoansRange = false;
+                        if (loansEndDate && tDate > loansEndDate) inLoansRange = false;
+
+                        if (inLoansRange) {
+                            loansTimeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningLoansBal, isFuture });
+                        }
                     }
                 } else if (t.is_savings) {
                     savingsPool += changeValue;
@@ -1265,10 +1274,9 @@
                 const labelName = t.labels?.name || 'Misc';
 
                 const timeString = tDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-                const isLoanRow = owner === 'Loans';
 
                 historyBody.insertAdjacentHTML('beforeend', `
-                    <tr class="${isFuture ? 'future-row' : ''} ${t.is_savings ? 'savings-row' : ''} ${isLoanRow ? 'loans-row' : ''}">
+                    <tr class="${isFuture ? 'future-row' : ''} ${t.is_savings ? 'savings-row' : ''} ${t.is_loan ? 'loans-row' : ''}">
                         <td class="px-4 py-3 text-[9px] font-black text-slate-400 leading-tight">
                             ${tDate.toLocaleDateString()}<br>
                             <span class="text-slate-500 font-bold">${timeString}</span><br>
