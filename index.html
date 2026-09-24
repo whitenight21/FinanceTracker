@@ -14,6 +14,7 @@
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.04); border-left: 4px solid #6366f1; }
         .savings-row { background-color: rgba(240, 249, 255, 0.4); }
+        .loans-row { background-color: rgba(254, 243, 199, 0.4); }
         .modal { transition: opacity 0.2s ease; visibility: hidden; opacity: 0; position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
         .modal.active { visibility: visible; opacity: 1; }
         body.modal-active { overflow: hidden; }
@@ -46,7 +47,7 @@
             </div>
         </header>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-6">
             <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
                 <div class="text-center">
                     <p class="text-[8px] font-black text-emerald-600 uppercase">Liquid Net (Total)</p>
@@ -60,6 +61,10 @@
             <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
                 <p class="text-[8px] font-black text-sky-600 uppercase">Savings Pool</p>
                 <h2 id="savings-pool" class="text-base md:text-xl font-black text-sky-600">$0</h2>
+            </div>
+            <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
+                <p class="text-[8px] font-black text-amber-600 uppercase">Loans Pool</p>
+                <h2 id="loans-pool" class="text-base md:text-xl font-black text-amber-600">$0</h2>
             </div>
             <div class="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 text-center">
                 <p class="text-[8px] font-black text-red-600 uppercase">Future Flow</p>
@@ -106,6 +111,7 @@
                             <select id="owner_select" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm bg-slate-50 font-bold text-slate-700 outline-none">
                                 <option value="Mathias">Mathias</option>
                                 <option value="Julia">Julia</option>
+                                <option value="Loans">Loans Pool</option>
                             </select>
                         </div>
 
@@ -140,6 +146,7 @@
                                     <option value="Mathias">Mathias</option>
                                     <option value="Julia">Julia</option>
                                     <option value="Savings">Savings Pool</option>
+                                    <option value="Loans">Loans Pool</option>
                                 </select>
                             </div>
                             <div>
@@ -148,6 +155,7 @@
                                     <option value="Julia">Julia</option>
                                     <option value="Mathias">Mathias</option>
                                     <option value="Savings">Savings Pool</option>
+                                    <option value="Loans">Loans Pool</option>
                                 </select>
                             </div>
                         </div>
@@ -236,6 +244,7 @@
                                 <option value="all">All Owners</option>
                                 <option value="Mathias">Mathias</option>
                                 <option value="Julia">Julia</option>
+                                <option value="Loans">Loans</option>
                             </select>
                         </div>
                         <div>
@@ -385,6 +394,7 @@
                                     <option value="all">All Owners</option>
                                     <option value="Mathias">Mathias</option>
                                     <option value="Julia">Julia</option>
+                                    <option value="Loans">Loans</option>
                                 </select>
                             </div>
                             <div class="w-full sm:w-auto">
@@ -442,6 +452,7 @@
                     <select id="edit_owner" class="w-full border p-3 rounded-xl bg-slate-50 font-bold text-slate-700 outline-none">
                         <option value="Mathias">Mathias</option>
                         <option value="Julia">Julia</option>
+                        <option value="Loans">Loans Pool</option>
                     </select>
                 </div>
 
@@ -794,13 +805,17 @@
             const fromDesc = userDesc ? `Transfer to ${toAcc}: ${userDesc}` : `Transfer to ${toAcc}`;
             const toDesc = userDesc ? `Transfer from ${fromAcc}: ${userDesc}` : `Transfer from ${fromAcc}`;
 
+            // Resolve owners & savings settings
+            const fromOwner = (fromAcc === 'Savings' || fromAcc === 'Loans') ? fromAcc : fromAcc;
+            const toOwner = (toAcc === 'Savings' || toAcc === 'Loans') ? toAcc : toAcc;
+
             // Entry 1: Outflow (Expense)
             const outflowPayload = {
                 description: fromDesc,
                 amount: amountVal,
                 type: 'expense',
                 label_id: transferLabel,
-                owner: fromAcc === 'Savings' ? 'Mathias' : fromAcc,
+                owner: fromOwner,
                 is_savings: fromAcc === 'Savings',
                 created_at: localDateTime
             };
@@ -811,7 +826,7 @@
                 amount: amountVal,
                 type: 'income',
                 label_id: transferLabel,
-                owner: toAcc === 'Savings' ? 'Mathias' : toAcc,
+                owner: toOwner,
                 is_savings: toAcc === 'Savings',
                 created_at: localDateTime
             };
@@ -1102,7 +1117,7 @@
             if (savEndDate) savEndDate.setHours(23,59,59,999);
 
             let netToday = 0, netMathias = 0, netJulia = 0;
-            let futureTotal = 0, savingsPool = 0, runningBal = 0, runningSavingsBal = 0;
+            let futureTotal = 0, savingsPool = 0, loansPool = 0, runningBal = 0, runningSavingsBal = 0;
             const liquidTimeline = [], savingsTimeline = [];
             const dailyData = {};
 
@@ -1118,7 +1133,9 @@
                 if (!dailyData[dateKey]) dailyData[dateKey] = { inc: 0, exp: 0 };
                 if (isInc) dailyData[dateKey].inc += amt; else dailyData[dateKey].exp += amt;
 
-                if (t.is_savings) {
+                if (owner === 'Loans') {
+                    loansPool += changeValue;
+                } else if (t.is_savings) {
                     savingsPool += changeValue;
 
                     let matchesSavingsOwner = (savingsOwnerFilter === 'all' || owner === savingsOwnerFilter);
@@ -1161,6 +1178,7 @@
             document.getElementById('net-mathias').innerText = `$${netMathias.toLocaleString()}`;
             document.getElementById('net-julia').innerText = `$${netJulia.toLocaleString()}`;
             document.getElementById('savings-pool').innerText = `$${savingsPool.toLocaleString()}`;
+            document.getElementById('loans-pool').innerText = `$${loansPool.toLocaleString()}`;
             document.getElementById('future-total').innerText = `$${futureTotal.toLocaleString()}`;
             document.getElementById('prognosis').innerText = `$${(netToday + futureTotal).toLocaleString()}`;
 
@@ -1190,9 +1208,10 @@
                 const labelName = t.labels?.name || 'Misc';
 
                 const timeString = tDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                const isLoanRow = owner === 'Loans';
 
                 historyBody.insertAdjacentHTML('beforeend', `
-                    <tr class="${isFuture ? 'future-row' : ''} ${t.is_savings ? 'savings-row' : ''}">
+                    <tr class="${isFuture ? 'future-row' : ''} ${t.is_savings ? 'savings-row' : ''} ${isLoanRow ? 'loans-row' : ''}">
                         <td class="px-4 py-3 text-[9px] font-black text-slate-400 leading-tight">
                             ${tDate.toLocaleDateString()}<br>
                             <span class="text-slate-500 font-bold">${timeString}</span><br>
