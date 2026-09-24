@@ -518,9 +518,16 @@
         
         document.getElementById('header-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
         
+        function formatISOStandardDate(d) {
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            return `${yyyy}-${mm}-${dd}`;
+        }
+
         const nowLocal = new Date();
-        document.getElementById('date').valueAsDate = nowLocal;
-        document.getElementById('transfer_date').valueAsDate = nowLocal;
+        document.getElementById('date').value = formatISOStandardDate(nowLocal);
+        document.getElementById('transfer_date').value = formatISOStandardDate(nowLocal);
 
         const currentHours = String(nowLocal.getHours()).padStart(2, '0');
         const currentMinutes = String(nowLocal.getMinutes()).padStart(2, '0');
@@ -531,15 +538,8 @@
         const firstDayOfMonth = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), 1);
         const lastDayOfMonth = new Date(nowLocal.getFullYear(), nowLocal.getMonth() + 1, 0);
 
-        const yyyyStart = firstDayOfMonth.getFullYear();
-        const mmStart = String(firstDayOfMonth.getMonth() + 1).padStart(2, '0');
-        const ddStart = String(firstDayOfMonth.getDate()).padStart(2, '0');
-        document.getElementById('labelReportStart').value = `${yyyyStart}-${mmStart}-${ddStart}`;
-
-        const yyyyEnd = lastDayOfMonth.getFullYear();
-        const mmEnd = String(lastDayOfMonth.getMonth() + 1).padStart(2, '0');
-        const ddEnd = String(lastDayOfMonth.getDate()).padStart(2, '0');
-        document.getElementById('labelReportEnd').value = `${yyyyEnd}-${mmEnd}-${ddEnd}`;
+        document.getElementById('labelReportStart').value = formatISOStandardDate(firstDayOfMonth);
+        document.getElementById('labelReportEnd').value = formatISOStandardDate(lastDayOfMonth);
 
         function parseLocal(str) {
             return new Date(str);
@@ -888,6 +888,17 @@
         async function confirmTransaction(id) {
             await supabaseClient.from('transactions').update({ created_at: new Date().toISOString() }).eq('id', id);
             calculateStats();
+        }
+
+        async function deleteTransaction(id) { 
+            if (confirm("Delete Transaction?")) { 
+                const { error } = await supabaseClient.from('transactions').delete().eq('id', id);
+                if (error) {
+                    alert("Error deleting transaction: " + error.message);
+                    return;
+                }
+                calculateStats(); 
+            } 
         }
 
         function changeMonth(dir) {
@@ -1501,7 +1512,6 @@
             });
         }
 
-        async function deleteTransaction(id) { if (confirm("Delete Transaction?")) { await supabaseClient.from('transactions').delete().eq('id', id); calculateStats(); } }
         init();
     </script>
 </body>
