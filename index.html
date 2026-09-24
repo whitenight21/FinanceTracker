@@ -117,6 +117,48 @@
                     </div>
                 </div>
 
+                <!-- TRANSFER FUNDS CARD -->
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-indigo-600 text-xs uppercase tracking-widest mb-3">Transfer Funds</h3>
+                    
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Date</label>
+                                <input id="transfer_date" type="date" class="w-full border-slate-200 border p-2 rounded-xl text-xs outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Time</label>
+                                <input id="transfer_time" type="time" class="w-full border-slate-200 border p-2 rounded-xl text-xs outline-none">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">From Account</label>
+                                <select id="transfer_from" class="w-full border-slate-200 border p-2 rounded-xl text-xs bg-slate-50 font-bold text-slate-700 outline-none">
+                                    <option value="Mathias">Mathias</option>
+                                    <option value="Julia">Julia</option>
+                                    <option value="Savings">Savings Pool</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">To Account</label>
+                                <select id="transfer_to" class="w-full border-slate-200 border p-2 rounded-xl text-xs bg-slate-50 font-bold text-slate-700 outline-none">
+                                    <option value="Julia">Julia</option>
+                                    <option value="Mathias">Mathias</option>
+                                    <option value="Savings">Savings Pool</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <input id="transfer_desc" type="text" placeholder="Transfer Description (Optional)" class="w-full border-slate-200 border p-2 rounded-xl text-xs outline-none">
+                        <input id="transfer_amount" type="number" placeholder="Transfer Amount (0.00)" class="w-full border-slate-200 border p-2 rounded-xl text-xs font-bold outline-none">
+
+                        <button onclick="transferFunds()" class="w-full bg-indigo-600 text-white font-black py-2.5 rounded-xl hover:bg-indigo-700 shadow-md text-xs transition-all">Execute Transfer</button>
+                    </div>
+                </div>
+
                 <!-- MANAGE LABELS CARD -->
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <h3 class="font-bold text-indigo-600 text-xs uppercase tracking-widest mb-3">Manage Labels</h3>
@@ -413,9 +455,12 @@
         
         const nowLocal = new Date();
         document.getElementById('date').valueAsDate = nowLocal;
+        document.getElementById('transfer_date').valueAsDate = nowLocal;
+
         const currentHours = String(nowLocal.getHours()).padStart(2, '0');
         const currentMinutes = String(nowLocal.getMinutes()).padStart(2, '0');
         document.getElementById('time').value = `${currentHours}:${currentMinutes}`;
+        document.getElementById('transfer_time').value = `${currentHours}:${currentMinutes}`;
 
         // Set Income/Expenses default date range to 1st of current month -> Last day of current month
         const firstDayOfMonth = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), 1);
@@ -675,6 +720,66 @@
             
             const resetNow = new Date();
             document.getElementById('time').value = `${String(resetNow.getHours()).padStart(2, '0')}:${String(resetNow.getMinutes()).padStart(2, '0')}`;
+            init();
+        }
+
+        async function transferFunds() {
+            const fromAcc = document.getElementById('transfer_from').value;
+            const toAcc = document.getElementById('transfer_to').value;
+            const amountVal = parseFloat(document.getElementById('transfer_amount').value);
+            const userDesc = document.getElementById('transfer_desc').value.trim();
+
+            if (fromAcc === toAcc) {
+                alert("Source and destination accounts must be different.");
+                return;
+            }
+
+            if (isNaN(amountVal) || amountVal <= 0) {
+                alert("Please enter a valid amount to transfer.");
+                return;
+            }
+
+            const dateVal = document.getElementById('transfer_date').value;
+            const timeVal = document.getElementById('transfer_time').value || '00:00';
+            const localDateTime = new Date(`${dateVal}T${timeVal}`).toISOString();
+
+            // Pick standard transfer label if available or null
+            const transferLabel = globalLabelsCache.length > 0 ? globalLabelsCache[0].id : null;
+
+            const fromDesc = userDesc ? `Transfer to ${toAcc}: ${userDesc}` : `Transfer to ${toAcc}`;
+            const toDesc = userDesc ? `Transfer from ${fromAcc}: ${userDesc}` : `Transfer from ${fromAcc}`;
+
+            // Entry 1: Outflow (Expense)
+            const outflowPayload = {
+                description: fromDesc,
+                amount: amountVal,
+                type: 'expense',
+                label_id: transferLabel,
+                owner: fromAcc === 'Savings' ? 'Mathias' : fromAcc,
+                is_savings: fromAcc === 'Savings',
+                created_at: localDateTime
+            };
+
+            // Entry 2: Inflow (Income)
+            const inflowPayload = {
+                description: toDesc,
+                amount: amountVal,
+                type: 'income',
+                label_id: transferLabel,
+                owner: toAcc === 'Savings' ? 'Mathias' : toAcc,
+                is_savings: toAcc === 'Savings',
+                created_at: localDateTime
+            };
+
+            const { error } = await supabaseClient.from('transactions').insert([outflowPayload, inflowPayload]);
+            
+            if (error) {
+                alert("Error processing transfer: " + error.message);
+                return;
+            }
+
+            document.getElementById('transfer_amount').value = '';
+            document.getElementById('transfer_desc').value = '';
             init();
         }
 
