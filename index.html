@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class'
+        }
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Chart.js DataLabels Plugin CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
@@ -22,13 +27,19 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+        .dark .calendar-grid { background-color: #334155; border-color: #334155; }
         .calendar-day { background-color: white; min-height: 60px; padding: 4px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
+        .dark .calendar-day { background-color: #1e293b; }
         .calendar-header { background-color: #f8fafc; text-align: center; padding: 6px 0; font-size: 11px; font-weight: 900; text-transform: uppercase; color: #94a3b8; }
+        .dark .calendar-header { background-color: #0f172a; color: #64748b; }
         .day-label { font-size: 13px; font-weight: 700; color: #64748b; margin-bottom: 2px; }
+        .dark .day-label { color: #94a3b8; }
         .cal-income { color: #10b981; font-size: 11px; font-weight: 800; }
         .cal-expense { color: #ef4444; font-size: 11px; font-weight: 800; }
         .not-current-month { background-color: #f8fafc; opacity: 0.5; }
+        .dark .not-current-month { background-color: #0f172a; opacity: 0.5; }
         .weekend { background-color: #f3f4f6; }
+        .dark .weekend { background-color: #1a2332; }
         .today-border { border: 2px solid #3b82f6 !important; border-radius: 4px; }
 
         /* Card Hidden Styling - Hidden completely from main view */
@@ -39,6 +50,11 @@
             display: none !important;
         }
 
+        /* Dark mode overrides for background elements */
+        .dark .future-row { background-color: rgba(99, 102, 241, 0.15); }
+        .dark .savings-row { background-color: rgba(14, 165, 233, 0.1); }
+        .dark .loans-row { background-color: rgba(245, 158, 11, 0.1); }
+
         @media (max-width: 380px) {
             .calendar-day { min-height: 52px; }
             .day-label { font-size: 11px; }
@@ -46,46 +62,76 @@
         }
     </style>
 </head>
-<body class="bg-slate-50 p-3 md:p-8 pb-32">
+<body class="bg-slate-50 dark:bg-slate-900 dark:text-slate-100 p-3 md:p-8 pb-32 transition-colors duration-200">
     <div class="max-w-6xl mx-auto">
         <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
-                <h1 class="text-3xl font-black text-slate-900 tracking-tight">Finance<span class="text-indigo-600">Flow</span></h1>
-                <p id="header-date" class="text-indigo-500 font-bold text-sm uppercase tracking-widest"></p>
+                <h1 class="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Finance<span class="text-indigo-600 dark:text-indigo-400">Flow</span></h1>
+                <p id="header-date" class="text-indigo-500 dark:text-indigo-400 font-bold text-sm uppercase tracking-widest"></p>
             </div>
         </header>
 
+        <!-- APP SETTINGS CARD -->
+        <div id="card-settings" data-card-id="card-settings" data-card-title="App Settings" class="app-card card-hidden bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase tracking-widest">App Settings</h3>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Theme Toggle -->
+                <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-2xl border border-slate-100 dark:border-slate-600">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100">Appearance Mode</h4>
+                        <p class="text-[10px] text-slate-400 dark:text-slate-400">Switch between Light and Dark interface modes</p>
+                    </div>
+                    <button onclick="toggleDarkMode()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm flex items-center gap-2">
+                        <span id="theme-toggle-text">Dark Mode</span>
+                    </button>
+                </div>
+
+                <!-- Card Reordering -->
+                <div>
+                    <div class="mb-2">
+                        <h4 class="text-xs font-bold text-slate-800 dark:text-slate-100">Reorder Dashboard Cards</h4>
+                        <p class="text-[10px] text-slate-400 dark:text-slate-400">Adjust the order of cards displayed on your screen</p>
+                    </div>
+                    <div id="settingsCardOrderList" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-1"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="main-cards-container" class="space-y-6">
         <!-- TOP METRICS CARD -->
-        <div id="card-metrics" data-card-id="card-metrics" data-card-title="Summary Metrics" class="app-card bg-white p-3 rounded-2xl shadow-sm border border-slate-100 mb-6">
-            <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+        <div id="card-metrics" data-card-id="card-metrics" data-card-title="Summary Metrics" class="app-card bg-white dark:bg-slate-800 p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+            <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 dark:border-slate-700">
                 <span class="text-[10px] font-black uppercase text-slate-400">Summary Metrics</span>
             </div>
             <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-between">
+                <div class="bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-600 flex flex-col justify-between">
                     <div class="text-center">
-                        <p class="text-[8px] font-black text-emerald-600 uppercase">Liquid Net (Total)</p>
-                        <h2 id="net-today" class="text-base md:text-xl font-black text-emerald-800">$0</h2>
+                        <p class="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase">Liquid Net (Total)</p>
+                        <h2 id="net-today" class="text-base md:text-xl font-black text-emerald-800 dark:text-emerald-300">$0</h2>
                     </div>
-                    <div class="border-t border-slate-200 mt-2 pt-1 flex justify-around text-[10px] font-bold text-slate-500">
-                        <div>M: <span id="net-mathias" class="text-slate-800 font-black">$0</span></div>
-                        <div>J: <span id="net-julia" class="text-slate-800 font-black">$0</span></div>
+                    <div class="border-t border-slate-200 dark:border-slate-600 mt-2 pt-1 flex justify-around text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                        <div>M: <span id="net-mathias" class="text-slate-800 dark:text-slate-200 font-black">$0</span></div>
+                        <div>J: <span id="net-julia" class="text-slate-800 dark:text-slate-200 font-black">$0</span></div>
                     </div>
                 </div>
-                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center flex flex-col justify-center">
-                    <p class="text-[8px] font-black text-sky-600 uppercase">Savings Pool</p>
-                    <h2 id="savings-pool" class="text-base md:text-xl font-black text-sky-600">$0</h2>
+                <div class="bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-600 text-center flex flex-col justify-center">
+                    <p class="text-[8px] font-black text-sky-600 dark:text-sky-400 uppercase">Savings Pool</p>
+                    <h2 id="savings-pool" class="text-base md:text-xl font-black text-sky-600 dark:text-sky-400">$0</h2>
                 </div>
-                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center flex flex-col justify-center">
-                    <p class="text-[8px] font-black text-amber-600 uppercase">Loans Pool</p>
-                    <h2 id="loans-pool" class="text-base md:text-xl font-black text-amber-600">$0</h2>
+                <div class="bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-600 text-center flex flex-col justify-center">
+                    <p class="text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase">Loans Pool</p>
+                    <h2 id="loans-pool" class="text-base md:text-xl font-black text-amber-600 dark:text-amber-400">$0</h2>
                 </div>
-                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center flex flex-col justify-center">
-                    <p class="text-[8px] font-black text-red-600 uppercase">Future Flow</p>
-                    <h2 id="future-total" class="text-base md:text-xl font-black text-red-600">$0</h2>
+                <div class="bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-600 text-center flex flex-col justify-center">
+                    <p class="text-[8px] font-black text-red-600 dark:text-red-400 uppercase">Future Flow</p>
+                    <h2 id="future-total" class="text-base md:text-xl font-black text-red-600 dark:text-red-400">$0</h2>
                 </div>
-                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center flex flex-col justify-center">
-                    <p class="text-[8px] font-black text-slate-600 uppercase">Prognosis</p>
-                    <h2 id="prognosis" class="text-base md:text-xl font-black text-slate-600">$0</h2>
+                <div class="bg-slate-50 dark:bg-slate-700/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-600 text-center flex flex-col justify-center">
+                    <p class="text-[8px] font-black text-slate-600 dark:text-slate-400 uppercase">Prognosis</p>
+                    <h2 id="prognosis" class="text-base md:text-xl font-black text-slate-600 dark:text-slate-300">$0</h2>
                 </div>
             </div>
         </div>
@@ -93,77 +139,77 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-1 space-y-6">
                 <!-- NEW ENTRY CARD -->
-                <div id="card-new-entry" data-card-id="card-new-entry" data-card-title="New Entry" class="app-card bg-white p-5 rounded-3xl shadow-xl border border-slate-100">
+                <div id="card-new-entry" data-card-id="card-new-entry" data-card-title="New Entry" class="app-card bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700">
                     <div class="flex items-center justify-between mb-4">
-                        <h3 class="font-bold text-base text-slate-800">New Entry</h3>
+                        <h3 class="font-bold text-base text-slate-800 dark:text-slate-100">New Entry</h3>
                     </div>
 
                     <div class="space-y-3">
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Date</label>
-                                <input id="date" type="date" class="w-full border-slate-200 border p-2.5 rounded-xl text-xs outline-none">
+                                <input id="date" type="date" class="w-full border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 border p-2.5 rounded-xl text-xs outline-none text-slate-800 dark:text-slate-100">
                             </div>
                             <div>
                                 <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Time</label>
-                                <input id="time" type="time" class="w-full border-slate-200 border p-2.5 rounded-xl text-xs outline-none">
+                                <input id="time" type="time" class="w-full border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 border p-2.5 rounded-xl text-xs outline-none text-slate-800 dark:text-slate-100">
                             </div>
                         </div>
-                        <input id="desc" type="text" placeholder="Description" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm outline-none">
-                        <input id="amount" type="number" placeholder="0.00" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm font-bold outline-none">
+                        <input id="desc" type="text" placeholder="Description" class="w-full border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 border p-2.5 rounded-xl text-sm outline-none text-slate-800 dark:text-slate-100">
+                        <input id="amount" type="number" placeholder="0.00" class="w-full border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 border p-2.5 rounded-xl text-sm font-bold outline-none text-slate-800 dark:text-slate-100">
                         
                         <div class="grid grid-cols-2 gap-2">
-                            <select id="type" class="border-slate-200 border p-2.5 rounded-xl text-sm bg-slate-50 font-semibold">
+                            <select id="type" class="border-slate-200 dark:border-slate-600 border p-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-700 font-semibold text-slate-800 dark:text-slate-100">
                                 <option value="income">Income (+)</option>
                                 <option value="expense">Expense (-)</option>
                             </select>
-                            <select id="label_select" class="border-slate-200 border p-2.5 rounded-xl text-sm bg-slate-50 font-semibold"></select>
+                            <select id="label_select" class="border-slate-200 dark:border-slate-600 border p-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-700 font-semibold text-slate-800 dark:text-slate-100"></select>
                         </div>
 
                         <div>
                             <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Wallet Owner</label>
-                            <select id="owner_select" class="w-full border-slate-200 border p-2.5 rounded-xl text-sm bg-slate-50 font-bold text-slate-700 outline-none">
+                            <select id="owner_select" class="w-full border-slate-200 dark:border-slate-600 border p-2.5 rounded-xl text-sm bg-slate-50 dark:bg-slate-700 font-bold text-slate-700 dark:text-slate-200 outline-none">
                                 <option value="Mathias">Mathias</option>
                                 <option value="Julia">Julia</option>
                             </select>
                         </div>
 
                         <div class="grid grid-cols-2 gap-2">
-                            <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
+                            <div class="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                                 <input id="is_savings" type="checkbox" onchange="if(this.checked) document.getElementById('is_loan').checked = false;" class="w-4 h-4 accent-sky-500">
-                                <label for="is_savings" class="text-[9px] font-black text-slate-500 uppercase cursor-pointer">Savings</label>
+                                <label for="is_savings" class="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase cursor-pointer">Savings</label>
                             </div>
-                            <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
+                            <div class="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                                 <input id="is_loan" type="checkbox" onchange="if(this.checked) document.getElementById('is_savings').checked = false;" class="w-4 h-4 accent-amber-500">
-                                <label for="is_loan" class="text-[9px] font-black text-slate-500 uppercase cursor-pointer">Loan</label>
+                                <label for="is_loan" class="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase cursor-pointer">Loan</label>
                             </div>
                         </div>
-                        <button onclick="addTransaction()" class="w-full bg-slate-900 text-white font-black py-3 rounded-xl hover:bg-black shadow-lg text-sm">Save Entry</button>
+                        <button onclick="addTransaction()" class="w-full bg-slate-900 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white font-black py-3 rounded-xl hover:bg-black shadow-lg text-sm transition-all">Save Entry</button>
                     </div>
                 </div>
 
                 <!-- TRANSFER FUNDS CARD -->
-                <div id="card-transfer" data-card-id="card-transfer" data-card-title="Transfer Funds" class="app-card bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                <div id="card-transfer" data-card-id="card-transfer" data-card-title="Transfer Funds" class="app-card bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="font-bold text-indigo-600 text-xs uppercase tracking-widest">Transfer Funds</h3>
+                        <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase tracking-widest">Transfer Funds</h3>
                     </div>
                     
                     <div class="space-y-3">
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Date</label>
-                                <input id="transfer_date" type="date" class="w-full border-slate-200 border p-2 rounded-xl text-xs outline-none">
+                                <input id="transfer_date" type="date" class="w-full border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 border p-2 rounded-xl text-xs outline-none text-slate-800 dark:text-slate-100">
                             </div>
                             <div>
                                 <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Time</label>
-                                <input id="transfer_time" type="time" class="w-full border-slate-200 border p-2 rounded-xl text-xs outline-none">
+                                <input id="transfer_time" type="time" class="w-full border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 border p-2 rounded-xl text-xs outline-none text-slate-800 dark:text-slate-100">
                             </div>
                         </div>
 
                         <div class="grid grid-cols-2 gap-2">
                             <div>
                                 <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">From Account</label>
-                                <select id="transfer_from" class="w-full border-slate-200 border p-2 rounded-xl text-xs bg-slate-50 font-bold text-slate-700 outline-none">
+                                <select id="transfer_from" class="w-full border-slate-200 dark:border-slate-600 border p-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-700 font-bold text-slate-700 dark:text-slate-200 outline-none">
                                     <option value="Mathias">Mathias</option>
                                     <option value="Julia">Julia</option>
                                     <option value="Savings">Savings Pool</option>
@@ -172,7 +218,7 @@
                             </div>
                             <div>
                                 <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">To Account</label>
-                                <select id="transfer_to" class="w-full border-slate-200 border p-2 rounded-xl text-xs bg-slate-50 font-bold text-slate-700 outline-none">
+                                <select id="transfer_to" class="w-full border-slate-200 dark:border-slate-600 border p-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-700 font-bold text-slate-700 dark:text-slate-200 outline-none">
                                     <option value="Julia">Julia</option>
                                     <option value="Mathias">Mathias</option>
                                     <option value="Savings">Savings Pool</option>
@@ -181,35 +227,35 @@
                             </div>
                         </div>
 
-                        <input id="transfer_desc" type="text" placeholder="Transfer Description (Optional)" class="w-full border-slate-200 border p-2 rounded-xl text-xs outline-none">
-                        <input id="transfer_amount" type="number" placeholder="Transfer Amount (0.00)" class="w-full border-slate-200 border p-2 rounded-xl text-xs font-bold outline-none">
+                        <input id="transfer_desc" type="text" placeholder="Transfer Description (Optional)" class="w-full border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 border p-2 rounded-xl text-xs outline-none text-slate-800 dark:text-slate-100">
+                        <input id="transfer_amount" type="number" placeholder="Transfer Amount (0.00)" class="w-full border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 border p-2 rounded-xl text-xs font-bold outline-none text-slate-800 dark:text-slate-100">
 
-                        <button onclick="transferFunds()" class="w-full bg-indigo-600 text-white font-black py-2.5 rounded-xl hover:bg-indigo-700 shadow-md text-xs transition-all">Execute Transfer</button>
+                        <button onclick="transferFunds()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-2.5 rounded-xl shadow-md text-xs transition-all">Execute Transfer</button>
                     </div>
                 </div>
 
                 <!-- MANAGE LABELS CARD -->
-                <div id="card-labels" data-card-id="card-labels" data-card-title="Manage Labels" class="app-card bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                <div id="card-labels" data-card-id="card-labels" data-card-title="Manage Labels" class="app-card bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <div class="flex justify-between items-center mb-3">
-                        <h3 class="font-bold text-indigo-600 text-xs uppercase tracking-widest">Manage Labels</h3>
+                        <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase tracking-widest">Manage Labels</h3>
                     </div>
                     
                     <!-- Add Label -->
                     <div class="mb-4 space-y-2">
                         <label class="block text-[8px] font-black uppercase text-slate-400 pl-1">Add New Label</label>
                         <div class="flex gap-2">
-                            <input id="new_label_name" type="text" placeholder="Label Name" class="flex-1 border-slate-200 border p-2 rounded-xl text-xs font-semibold outline-none">
+                            <input id="new_label_name" type="text" placeholder="Label Name" class="flex-1 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 border p-2 rounded-xl text-xs font-semibold outline-none text-slate-800 dark:text-slate-100">
                             <button onclick="addNewLabel()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-3 py-2 rounded-xl text-xs transition-all shadow-sm">Add</button>
                         </div>
                     </div>
 
-                    <hr class="border-slate-100 my-3">
+                    <hr class="border-slate-100 dark:border-slate-700 my-3">
 
                     <!-- Remove Label -->
                     <div class="space-y-2">
                         <label class="block text-[8px] font-black uppercase text-slate-400 pl-1">Remove Selected Label</label>
                         <div class="flex gap-2">
-                            <select id="delete_label_select" class="flex-1 border-slate-200 border p-2 rounded-xl text-xs bg-slate-50 font-semibold outline-none"></select>
+                            <select id="delete_label_select" class="flex-1 border-slate-200 dark:border-slate-600 border p-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-700 font-semibold outline-none text-slate-800 dark:text-slate-100"></select>
                             <button onclick="deleteSelectedLabel()" class="bg-rose-500 hover:bg-rose-600 text-white font-black px-3 py-2 rounded-xl text-xs transition-all shadow-sm">Remove</button>
                         </div>
                     </div>
@@ -218,48 +264,48 @@
 
             <div class="lg:col-span-2 space-y-6">
                 <!-- LIQUID TREND CARD -->
-                <div id="card-liquid-trend" data-card-id="card-liquid-trend" data-card-title="Liquid Trend" class="app-card bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                <div id="card-liquid-trend" data-card-id="card-liquid-trend" data-card-title="Liquid Trend" class="app-card bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <div class="flex justify-between items-center w-full sm:w-auto gap-3">
-                            <h3 class="font-bold text-slate-700 text-[10px] uppercase tracking-widest">Liquid Trend</h3>
+                            <h3 class="font-bold text-slate-700 dark:text-slate-300 text-[10px] uppercase tracking-widest">Liquid Trend</h3>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 text-[10px] font-black">
-                            <select id="trendOwner" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold text-slate-700">
+                            <select id="trendOwner" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-700 dark:text-slate-200">
                                 <option value="all">All Owners</option>
                                 <option value="Mathias">Mathias</option>
                                 <option value="Julia">Julia</option>
                             </select>
                             <span class="text-slate-400 uppercase">Start:</span>
-                            <input id="trendStart" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                            <input id="trendStart" type="date" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
                             <span class="text-slate-400 uppercase">End:</span>
-                            <input id="trendEnd" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                            <input id="trendEnd" type="date" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
                         </div>
                     </div>
                     <div class="h-48 md:h-64"><canvas id="lineChart"></canvas></div>
                 </div>
 
                 <!-- Income/Expenses by Labels -->
-                <div id="card-label-breakdown" data-card-id="card-label-breakdown" data-card-title="Income / Expense Breakdown" class="app-card bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                <div id="card-label-breakdown" data-card-id="card-label-breakdown" data-card-title="Income / Expense Breakdown" class="app-card bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <div class="flex justify-between items-center w-full sm:w-auto gap-3">
-                            <h3 class="font-bold text-indigo-600 text-[10px] uppercase tracking-widest">Income / Expenses by Labels</h3>
+                            <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-[10px] uppercase tracking-widest">Income / Expenses by Labels</h3>
                         </div>
                         <div class="flex items-center gap-2 text-[10px] font-black">
                             <span class="text-slate-400 uppercase">Start:</span>
-                            <input id="labelReportStart" type="date" onchange="renderLabelReport()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                            <input id="labelReportStart" type="date" onchange="renderLabelReport()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
                             <span class="text-slate-400 uppercase">End:</span>
-                            <input id="labelReportEnd" type="date" onchange="renderLabelReport()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                            <input id="labelReportEnd" type="date" onchange="renderLabelReport()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div class="bg-emerald-50/60 p-3 rounded-2xl border border-emerald-100 text-center">
-                            <p class="text-[9px] font-black text-emerald-600 uppercase tracking-wider">Total Income</p>
-                            <h4 id="labelReportTotalIncome" class="text-lg md:text-xl font-black text-emerald-700 mt-1">$0.00</h4>
+                        <div class="bg-emerald-50/60 dark:bg-emerald-950/30 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 text-center">
+                            <p class="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Total Income</p>
+                            <h4 id="labelReportTotalIncome" class="text-lg md:text-xl font-black text-emerald-700 dark:text-emerald-300 mt-1">$0.00</h4>
                         </div>
-                        <div class="bg-rose-50/60 p-3 rounded-2xl border border-rose-100 text-center">
-                            <p class="text-[9px] font-black text-rose-600 uppercase tracking-wider">Total Expenses</p>
-                            <h4 id="labelReportTotalExpenses" class="text-lg md:text-xl font-black text-rose-700 mt-1">$0.00</h4>
+                        <div class="bg-rose-50/60 dark:bg-rose-950/30 p-3 rounded-2xl border border-rose-100 dark:border-rose-900/50 text-center">
+                            <p class="text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-wider">Total Expenses</p>
+                            <h4 id="labelReportTotalExpenses" class="text-lg md:text-xl font-black text-rose-700 dark:text-rose-300 mt-1">$0.00</h4>
                         </div>
                     </div>
 
@@ -267,7 +313,7 @@
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                         <div>
                             <label class="block text-[9px] font-black uppercase text-slate-400 mb-1 pl-1">Filter Owner</label>
-                            <select id="labelReportOwnerSelect" onchange="renderLabelReport()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none">
+                            <select id="labelReportOwnerSelect" onchange="renderLabelReport()" class="w-full border-slate-200 dark:border-slate-600 border p-2 rounded-xl text-sm bg-slate-50 dark:bg-slate-700 font-semibold outline-none text-slate-800 dark:text-slate-100">
                                 <option value="all">All Owners</option>
                                 <option value="Mathias">Mathias</option>
                                 <option value="Julia">Julia</option>
@@ -275,7 +321,7 @@
                         </div>
                         <div>
                             <label class="block text-[9px] font-black uppercase text-slate-400 mb-1 pl-1">Chart Display Mode</label>
-                            <select id="labelReportChartMode" onchange="renderLabelReport()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none">
+                            <select id="labelReportChartMode" onchange="renderLabelReport()" class="w-full border-slate-200 dark:border-slate-600 border p-2 rounded-xl text-sm bg-slate-50 dark:bg-slate-700 font-semibold outline-none text-slate-800 dark:text-slate-100">
                                 <option value="expense">Show Expense Breakdown</option>
                                 <option value="income">Show Income Breakdown</option>
                             </select>
@@ -288,9 +334,9 @@
                         <div class="relative">
                             <div class="flex justify-between items-center mb-1 pl-1">
                                 <label class="block text-[9px] font-black uppercase text-slate-400">Means of Income</label>
-                                <button type="button" onclick="toggleAllIncomeLabelsReport()" id="toggleAllIncomeBtn" class="text-[9px] font-bold text-emerald-600 hover:text-emerald-800">Deselect All</button>
+                                <button type="button" onclick="toggleAllIncomeLabelsReport()" id="toggleAllIncomeBtn" class="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-800">Deselect All</button>
                             </div>
-                            <div class="border-slate-200 border rounded-xl bg-slate-50 p-2 max-h-32 overflow-y-auto custom-scrollbar space-y-1" id="incomeLabelReportMultiSelect">
+                            <div class="border-slate-200 dark:border-slate-600 border rounded-xl bg-slate-50 dark:bg-slate-700 p-2 max-h-32 overflow-y-auto custom-scrollbar space-y-1" id="incomeLabelReportMultiSelect">
                                 <!-- Income checkboxes populated dynamically -->
                             </div>
                         </div>
@@ -299,9 +345,9 @@
                         <div class="relative">
                             <div class="flex justify-between items-center mb-1 pl-1">
                                 <label class="block text-[9px] font-black uppercase text-slate-400">Expense Labels</label>
-                                <button type="button" onclick="toggleAllLabelsReport()" id="toggleAllLabelsBtn" class="text-[9px] font-bold text-indigo-600 hover:text-indigo-800">Deselect All</button>
+                                <button type="button" onclick="toggleAllLabelsReport()" id="toggleAllLabelsBtn" class="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800">Deselect All</button>
                             </div>
-                            <div class="border-slate-200 border rounded-xl bg-slate-50 p-2 max-h-32 overflow-y-auto custom-scrollbar space-y-1" id="labelReportMultiSelect">
+                            <div class="border-slate-200 dark:border-slate-600 border rounded-xl bg-slate-50 dark:bg-slate-700 p-2 max-h-32 overflow-y-auto custom-scrollbar space-y-1" id="labelReportMultiSelect">
                                 <!-- Expense checkboxes populated dynamically -->
                             </div>
                         </div>
@@ -313,54 +359,54 @@
                 </div>
 
                 <!-- SAVINGS TREND CARD -->
-                <div id="card-savings-trend" data-card-id="card-savings-trend" data-card-title="Savings Trend" class="app-card bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                <div id="card-savings-trend" data-card-id="card-savings-trend" data-card-title="Savings Trend" class="app-card bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <div class="flex justify-between items-center w-full sm:w-auto gap-3">
-                            <h3 class="font-bold text-sky-600 text-[10px] uppercase tracking-widest">Savings Trend</h3>
+                            <h3 class="font-bold text-sky-600 dark:text-sky-400 text-[10px] uppercase tracking-widest">Savings Trend</h3>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 text-[10px] font-black">
-                            <select id="savingsOwner" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold text-slate-700">
+                            <select id="savingsOwner" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-700 dark:text-slate-200">
                                 <option value="all">All Owners</option>
                                 <option value="Mathias">Mathias</option>
                                 <option value="Julia">Julia</option>
                             </select>
                             <span class="text-slate-400 uppercase">Start:</span>
-                            <input id="savingsStart" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                            <input id="savingsStart" type="date" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
                             <span class="text-slate-400 uppercase">End:</span>
-                            <input id="savingsEnd" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                            <input id="savingsEnd" type="date" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
                         </div>
                     </div>
                     <div class="h-48 md:h-64"><canvas id="savingsChart"></canvas></div>
                 </div>
 
                 <!-- LOANS TREND CARD -->
-                <div id="card-loans-trend" data-card-id="card-loans-trend" data-card-title="Loans Trend" class="app-card bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                <div id="card-loans-trend" data-card-id="card-loans-trend" data-card-title="Loans Trend" class="app-card bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                         <div class="flex justify-between items-center w-full sm:w-auto gap-3">
-                            <h3 class="font-bold text-amber-600 text-[10px] uppercase tracking-widest">Loans Trend</h3>
+                            <h3 class="font-bold text-amber-600 dark:text-amber-400 text-[10px] uppercase tracking-widest">Loans Trend</h3>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 text-[10px] font-black">
-                            <select id="loansOwner" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold text-slate-700">
+                            <select id="loansOwner" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-700 dark:text-slate-200">
                                 <option value="all">All Owners</option>
                                 <option value="Mathias">Mathias</option>
                                 <option value="Julia">Julia</option>
                             </select>
                             <span class="text-slate-400 uppercase">Start:</span>
-                            <input id="loansStart" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                            <input id="loansStart" type="date" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
                             <span class="text-slate-400 uppercase">End:</span>
-                            <input id="loansEnd" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                            <input id="loansEnd" type="date" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
                         </div>
                     </div>
                     <div class="h-48 md:h-64"><canvas id="loansChart"></canvas></div>
                 </div>
 
                 <!-- CALENDAR CARD -->
-                <div id="card-calendar" data-card-id="card-calendar" data-card-title="Monthly Calendar" class="app-card bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                <div id="card-calendar" data-card-id="card-calendar" data-card-title="Monthly Calendar" class="app-card bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <div class="flex justify-between items-center mb-4">
-                        <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-full font-bold text-slate-400">&larr;</button>
-                        <h3 id="calendar-month-name" class="font-black text-slate-800 text-[11px] uppercase tracking-tighter"></h3>
+                        <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full font-bold text-slate-400">&larr;</button>
+                        <h3 id="calendar-month-name" class="font-black text-slate-800 dark:text-slate-100 text-[11px] uppercase tracking-tighter"></h3>
                         <div class="flex items-center gap-2">
-                            <button onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 rounded-full font-bold text-slate-400">&rarr;</button>
+                            <button onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full font-bold text-slate-400">&rarr;</button>
                         </div>
                     </div>
                     <div class="calendar-grid" id="calendar-body">
@@ -370,19 +416,19 @@
                 </div>
 
                 <!-- LABEL LOOKUP CARD -->
-                <div id="card-label-lookup" data-card-id="card-label-lookup" data-card-title="Label Expense Lookup" class="app-card bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                <div id="card-label-lookup" data-card-id="card-label-lookup" data-card-title="Label Expense Lookup" class="app-card bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
                     <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-bold text-slate-700 text-[10px] uppercase tracking-widest">Label Expense Lookup</h3>
+                        <h3 class="font-bold text-slate-700 dark:text-slate-300 text-[10px] uppercase tracking-widest">Label Expense Lookup</h3>
                     </div>
                     
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                         <div>
                             <label class="block text-[9px] font-black uppercase text-slate-400 mb-1">Select Label</label>
-                            <select id="lookupLabel" onchange="calculateLabelExpense()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none"></select>
+                            <select id="lookupLabel" onchange="calculateLabelExpense()" class="w-full border-slate-200 dark:border-slate-600 border p-2 rounded-xl text-sm bg-slate-50 dark:bg-slate-700 font-semibold outline-none text-slate-800 dark:text-slate-100"></select>
                         </div>
                         <div>
                             <label class="block text-[9px] font-black uppercase text-slate-400 mb-1">Timeframe</label>
-                            <select id="lookupTimeframe" onchange="handleTimeframeChange()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none">
+                            <select id="lookupTimeframe" onchange="handleTimeframeChange()" class="w-full border-slate-200 dark:border-slate-600 border p-2 rounded-xl text-sm bg-slate-50 dark:bg-slate-700 font-semibold outline-none text-slate-800 dark:text-slate-100">
                                 <option value="all">All Time</option>
                                 <option value="this-month">This Month</option>
                                 <option value="last-30">Last 30 Days</option>
@@ -396,26 +442,26 @@
                     <div id="lookupCustomDates" class="hidden grid-cols-2 gap-3 mb-4">
                         <div>
                             <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Start Date</label>
-                            <input id="lookupStart" type="date" onchange="calculateLabelExpense()" class="w-full border-slate-200 border p-2 rounded-xl text-xs outline-none bg-slate-50 font-semibold">
+                            <input id="lookupStart" type="date" onchange="calculateLabelExpense()" class="w-full border-slate-200 dark:border-slate-600 border p-2 rounded-xl text-xs outline-none bg-slate-50 dark:bg-slate-700 font-semibold text-slate-800 dark:text-slate-100">
                         </div>
                         <div>
                             <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">End Date</label>
-                            <input id="lookupEnd" type="date" onchange="calculateLabelExpense()" class="w-full border-slate-200 border p-2 rounded-xl text-xs outline-none bg-slate-50 font-semibold">
+                            <input id="lookupEnd" type="date" onchange="calculateLabelExpense()" class="w-full border-slate-200 dark:border-slate-600 border p-2 rounded-xl text-xs outline-none bg-slate-50 dark:bg-slate-700 font-semibold text-slate-800 dark:text-slate-100">
                         </div>
                     </div>
 
-                    <div class="bg-slate-50 rounded-2xl p-4 text-center border border-slate-100">
-                        <p class="text-[9px] font-black text-slate-500 uppercase tracking-wider">Total Expenses</p>
-                        <h4 id="lookupResult" class="text-2xl font-black text-rose-600 mt-1">$0.00</h4>
+                    <div class="bg-slate-50 dark:bg-slate-700/50 rounded-2xl p-4 text-center border border-slate-100 dark:border-slate-600">
+                        <p class="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Expenses</p>
+                        <h4 id="lookupResult" class="text-2xl font-black text-rose-600 dark:text-rose-400 mt-1">$0.00</h4>
                     </div>
                 </div>
 
                 <!-- LEDGER HISTORY CARD -->
-                <div id="card-ledger" data-card-id="card-ledger" data-card-title="Ledger History" class="app-card bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden mb-12">
-                    <div class="p-4 border-b border-slate-100 flex items-center justify-between">
-                        <h3 class="font-bold text-slate-800 text-xs uppercase tracking-wider">Ledger History</h3>
+                <div id="card-ledger" data-card-id="card-ledger" data-card-title="Ledger History" class="app-card bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden mb-12">
+                    <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 text-xs uppercase tracking-wider">Ledger History</h3>
                         <div class="flex items-center gap-2">
-                            <button onclick="toggleExportPanel()" class="flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-xl font-black text-xs transition-all border border-emerald-200">
+                            <button onclick="toggleExportPanel()" class="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-xl font-black text-xs transition-all border border-emerald-200 dark:border-emerald-800">
                                 <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                                     <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
                                 </svg>
@@ -424,14 +470,14 @@
                         </div>
                     </div>
 
-                    <div id="exportPanel" class="hidden bg-emerald-950/5 border-b border-emerald-100 p-4 transition-all">
+                    <div id="exportPanel" class="hidden bg-emerald-950/5 dark:bg-emerald-950/20 border-b border-emerald-100 dark:border-emerald-900/50 p-4 transition-all">
                         <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                             <div>
-                                <h4 class="text-xs font-black text-emerald-900 uppercase tracking-wide">Database Export Tools</h4>
-                                <p class="text-[10px] text-slate-500 font-medium">Download transaction records to open in Excel or export as a binary SQLite file.</p>
+                                <h4 class="text-xs font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-wide">Database Export Tools</h4>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Download transaction records to open in Excel or export as a binary SQLite file.</p>
                             </div>
                             <div class="flex items-center gap-2 w-full md:w-auto flex-wrap sm:flex-nowrap">
-                                <select id="exportScope" class="bg-white border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700 outline-none">
+                                <select id="exportScope" class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-2 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none">
                                     <option value="filtered">Filtered View Only</option>
                                     <option value="all">Full Database (All History)</option>
                                 </select>
@@ -445,11 +491,11 @@
                         </div>
                     </div>
                     
-                    <div class="bg-slate-100 p-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-slate-200">
+                    <div class="bg-slate-100 dark:bg-slate-700/50 p-3 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700">
                         <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                             <div class="w-full sm:w-auto">
                                 <label class="block text-[8px] font-black uppercase text-slate-400 mb-0.5">Filter Owner</label>
-                                <select id="history_owner_filter" onchange="renderFilteredHistory()" class="w-full sm:w-36 bg-white border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700 outline-none">
+                                <select id="history_owner_filter" onchange="renderFilteredHistory()" class="w-full sm:w-36 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-2 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none">
                                     <option value="all">All Owners</option>
                                     <option value="Mathias">Mathias</option>
                                     <option value="Julia">Julia</option>
@@ -457,35 +503,36 @@
                             </div>
                             <div class="w-full sm:w-auto">
                                 <label class="block text-[8px] font-black uppercase text-slate-400 mb-0.5">Filter Label</label>
-                                <select id="history_label_filter" onchange="renderFilteredHistory()" class="w-full sm:w-40 bg-white border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700 outline-none"></select>
+                                <select id="history_label_filter" onchange="renderFilteredHistory()" class="w-full sm:w-40 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-2 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none"></select>
                             </div>
                         </div>
                         <div class="flex gap-2 w-full md:w-auto">
                             <div class="flex-1">
                                 <label class="block text-[8px] font-black uppercase text-slate-400 mb-0.5">Start Date</label>
-                                <input id="historyStart" type="date" onchange="renderFilteredHistory()" class="w-full bg-white border border-slate-200 rounded-xl p-1.5 text-xs font-bold text-slate-700 outline-none">
+                                <input id="historyStart" type="date" onchange="renderFilteredHistory()" class="w-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none">
                             </div>
                             <div class="flex-1">
                                 <label class="block text-[8px] font-black uppercase text-slate-400 mb-0.5">End Date</label>
-                                <input id="historyEnd" type="date" onchange="renderFilteredHistory()" class="w-full bg-white border border-slate-200 rounded-xl p-1.5 text-xs font-bold text-slate-700 outline-none">
+                                <input id="historyEnd" type="date" onchange="renderFilteredHistory()" class="w-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none">
                             </div>
                         </div>
                     </div>
 
                     <div class="overflow-x-auto custom-scrollbar">
                         <table class="w-full text-left min-w-[500px]">
-                            <tbody id="history-body" class="divide-y divide-slate-50"></tbody>
+                            <tbody id="history-body" class="divide-y divide-slate-50 dark:divide-slate-700"></tbody>
                         </table>
                     </div>
                 </div>
             </div>
         </div>
+        </div>
     </div>
 
     <!-- BOTTOM FLOATING NAVIGATION BAR (CLEAN LIGHT BLUE THEME) -->
-    <div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-lg bg-sky-100/95 backdrop-blur-md text-slate-800 px-4 py-2.5 rounded-full shadow-xl border border-sky-300 flex items-center justify-between">
+    <div class="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-lg bg-sky-100/95 dark:bg-slate-800/95 backdrop-blur-md text-slate-800 dark:text-slate-100 px-4 py-2.5 rounded-full shadow-xl border border-sky-300 dark:border-slate-700 flex items-center justify-between">
         <!-- LEFT: App Settings Button -->
-        <button onclick="navigateToCard('card-labels')" title="App Settings / Labels" class="p-2.5 bg-sky-200 hover:bg-sky-300 text-sky-800 rounded-full transition-all flex items-center justify-center">
+        <button onclick="navigateToCard('card-settings')" title="App Settings" class="p-2.5 bg-sky-200 dark:bg-slate-700 hover:bg-sky-300 dark:hover:bg-slate-600 text-sky-800 dark:text-sky-300 rounded-full transition-all flex items-center justify-center">
             <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
                 <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
             </svg>
@@ -499,12 +546,12 @@
             </button>
 
             <!-- Card Stack Popover Menu -->
-            <div id="navDeckPopover" class="hidden absolute bottom-12 left-1/2 -translate-x-1/2 w-80 max-h-80 bg-white border border-sky-200 text-slate-800 rounded-2xl shadow-2xl p-2 overflow-y-auto custom-scrollbar">
-                <div class="text-[10px] font-black uppercase tracking-wider text-sky-700 p-2 border-b border-sky-100 flex justify-between items-center">
+            <div id="navDeckPopover" class="hidden absolute bottom-12 left-1/2 -translate-x-1/2 w-80 max-h-80 bg-white dark:bg-slate-800 border border-sky-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 rounded-2xl shadow-2xl p-2 overflow-y-auto custom-scrollbar">
+                <div class="text-[10px] font-black uppercase tracking-wider text-sky-700 dark:text-sky-400 p-2 border-b border-sky-100 dark:border-slate-700 flex justify-between items-center">
                     <span>Card Stack Manager</span>
                     <span class="text-slate-400 font-semibold">Toggle HIDE/SHOW</span>
                 </div>
-                <div id="navDeckList" class="divide-y divide-sky-50"></div>
+                <div id="navDeckList" class="divide-y divide-sky-50 dark:divide-slate-700"></div>
             </div>
         </div>
 
@@ -518,44 +565,44 @@
 
     <!-- EDIT TRANSACTION MODAL -->
     <div id="editModal" class="modal">
-        <div class="bg-white w-full max-w-md p-8 rounded-3xl shadow-2xl">
+        <div class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 w-full max-w-md p-8 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700">
             <h3 class="text-2xl font-black mb-6">Edit Entry</h3>
             <div class="space-y-4">
                 <input id="edit_id" type="hidden">
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Date</label>
-                        <input id="edit_date" type="date" class="w-full border p-3 rounded-xl outline-none text-sm">
+                        <input id="edit_date" type="date" class="w-full border dark:border-slate-600 bg-white dark:bg-slate-700 p-3 rounded-xl outline-none text-sm">
                     </div>
                     <div>
                         <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Time</label>
-                        <input id="edit_time" type="time" class="w-full border p-3 rounded-xl outline-none text-sm">
+                        <input id="edit_time" type="time" class="w-full border dark:border-slate-600 bg-white dark:bg-slate-700 p-3 rounded-xl outline-none text-sm">
                     </div>
                 </div>
-                <input id="edit_desc" type="text" class="w-full border p-3 rounded-xl outline-none">
-                <input id="edit_amount" type="number" class="w-full border p-3 rounded-xl outline-none font-bold">
+                <input id="edit_desc" type="text" class="w-full border dark:border-slate-600 bg-white dark:bg-slate-700 p-3 rounded-xl outline-none text-sm">
+                <input id="edit_amount" type="number" class="w-full border dark:border-slate-600 bg-white dark:bg-slate-700 p-3 rounded-xl outline-none font-bold text-sm">
                 
                 <div class="grid grid-cols-2 gap-2">
-                    <select id="edit_type" class="border p-3 rounded-xl bg-slate-50"><option value="income">Income</option><option value="expense">Expense</option></select>
-                    <select id="edit_label" class="border p-3 rounded-xl bg-slate-50"></select>
+                    <select id="edit_type" class="border dark:border-slate-600 p-3 rounded-xl bg-slate-50 dark:bg-slate-700 text-sm"><option value="income">Income</option><option value="expense">Expense</option></select>
+                    <select id="edit_label" class="border dark:border-slate-600 p-3 rounded-xl bg-slate-50 dark:bg-slate-700 text-sm"></select>
                 </div>
 
                 <div>
                     <label class="block text-[8px] font-black uppercase text-slate-400 mb-1 pl-1">Wallet Owner</label>
-                    <select id="edit_owner" class="w-full border p-3 rounded-xl bg-slate-50 font-bold text-slate-700 outline-none">
+                    <select id="edit_owner" class="w-full border dark:border-slate-600 p-3 rounded-xl bg-slate-50 dark:bg-slate-700 font-bold text-slate-700 dark:text-slate-200 outline-none text-sm">
                         <option value="Mathias">Mathias</option>
                         <option value="Julia">Julia</option>
                     </select>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">
-                    <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
+                    <div class="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                         <input id="edit_savings" type="checkbox" onchange="if(this.checked) document.getElementById('edit_loan').checked = false;" class="w-5 h-5 accent-sky-500">
-                        <label for="edit_savings" class="text-[10px] font-black uppercase text-slate-500 cursor-pointer">Savings</label>
+                        <label for="edit_savings" class="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 cursor-pointer">Savings</label>
                     </div>
-                    <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
+                    <div class="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                         <input id="edit_loan" type="checkbox" onchange="if(this.checked) document.getElementById('edit_savings').checked = false;" class="w-5 h-5 accent-amber-500">
-                        <label for="edit_loan" class="text-[10px] font-black uppercase text-slate-500 cursor-pointer">Loan</label>
+                        <label for="edit_loan" class="text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 cursor-pointer">Loan</label>
                     </div>
                 </div>
 
@@ -569,8 +616,8 @@
 
     <!-- CHART POINT DETAILS MODAL BOX -->
     <div id="chartPointModal" class="modal">
-        <div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl relative border border-slate-100">
-            <button onclick="closeChartPointModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-black text-xl">&times;</button>
+        <div class="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 w-full max-w-sm p-6 rounded-3xl shadow-2xl relative border border-slate-100 dark:border-slate-700">
+            <button onclick="closeChartPointModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-black text-xl">&times;</button>
             <div class="flex items-center gap-2 mb-3">
                 <span id="chartModalBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase">Transaction</span>
                 <span id="chartModalDate" class="text-xs font-bold text-slate-400"></span>
@@ -578,29 +625,29 @@
             
             <div class="mb-4">
                 <p class="text-[9px] font-black uppercase text-slate-400">Running Balance</p>
-                <h3 id="chartModalBalance" class="text-2xl font-black text-slate-800">$0.00</h3>
+                <h3 id="chartModalBalance" class="text-2xl font-black text-slate-800 dark:text-slate-100">$0.00</h3>
             </div>
 
-            <div class="bg-slate-50 rounded-2xl p-3 border border-slate-100 space-y-2 mb-4">
+            <div class="bg-slate-50 dark:bg-slate-700/50 rounded-2xl p-3 border border-slate-100 dark:border-slate-600 space-y-2 mb-4">
                 <div class="flex justify-between items-center text-xs">
                     <span class="text-slate-400 font-medium">Transaction Amount:</span>
-                    <span id="chartModalAmount" class="font-black text-slate-800"></span>
+                    <span id="chartModalAmount" class="font-black text-slate-800 dark:text-slate-100"></span>
                 </div>
                 <div class="flex justify-between items-center text-xs">
                     <span class="text-slate-400 font-medium">Description:</span>
-                    <span id="chartModalDesc" class="font-bold text-slate-700 truncate max-w-[160px]"></span>
+                    <span id="chartModalDesc" class="font-bold text-slate-700 dark:text-slate-200 truncate max-w-[160px]"></span>
                 </div>
                 <div class="flex justify-between items-center text-xs">
                     <span class="text-slate-400 font-medium">Category / Label:</span>
-                    <span id="chartModalLabel" class="font-bold text-indigo-600"></span>
+                    <span id="chartModalLabel" class="font-bold text-indigo-600 dark:text-indigo-400"></span>
                 </div>
                 <div class="flex justify-between items-center text-xs">
                     <span class="text-slate-400 font-medium">Owner:</span>
-                    <span id="chartModalOwner" class="font-bold text-slate-700"></span>
+                    <span id="chartModalOwner" class="font-bold text-slate-700 dark:text-slate-200"></span>
                 </div>
             </div>
 
-            <button onclick="closeChartPointModal()" class="w-full bg-slate-900 hover:bg-black text-white font-black py-2.5 rounded-xl shadow-md text-xs transition-all">Close</button>
+            <button onclick="closeChartPointModal()" class="w-full bg-slate-900 dark:bg-indigo-600 hover:bg-black dark:hover:bg-indigo-700 text-white font-black py-2.5 rounded-xl shadow-md text-xs transition-all">Close</button>
         </div>
     </div>
 
@@ -651,6 +698,87 @@
 
         function parseLocal(str) {
             return new Date(str);
+        }
+
+        /* ---------------- DARK MODE & CARD REORDERING ---------------- */
+        function toggleDarkMode() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            document.getElementById('theme-toggle-text').innerText = isDark ? 'Light Mode' : 'Dark Mode';
+            
+            // Re-render charts to adjust text/grid colors if needed
+            calculateStats();
+        }
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-toggle-text').innerText = 'Light Mode';
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('theme-toggle-text').innerText = 'Dark Mode';
+            }
+        }
+
+        function renderSettingsCardOrder() {
+            const container = document.getElementById('settingsCardOrderList');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const cards = Array.from(document.querySelectorAll('.app-card'));
+            cards.forEach((card, index) => {
+                const cardId = card.getAttribute('data-card-id');
+                const cardTitle = card.getAttribute('data-card-title') || cardId;
+
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between p-2.5 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-100 dark:border-slate-600 text-xs font-semibold';
+                row.innerHTML = `
+                    <span class="text-slate-700 dark:text-slate-200">${cardTitle}</span>
+                    <div class="flex items-center gap-1">
+                        <button onclick="moveCard('${cardId}', -1)" ${index === 0 ? 'disabled class="opacity-30 p-1"' : 'class="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300"'}>▲</button>
+                        <button onclick="moveCard('${cardId}', 1)" ${index === cards.length - 1 ? 'disabled class="opacity-30 p-1"' : 'class="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded text-slate-600 dark:text-slate-300"'}>▼</button>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function moveCard(cardId, direction) {
+            const card = document.getElementById(cardId);
+            if (!card) return;
+
+            if (direction === -1 && card.previousElementSibling) {
+                card.parentNode.insertBefore(card, card.previousElementSibling);
+            } else if (direction === 1 && card.nextElementSibling) {
+                card.parentNode.insertBefore(card.nextElementSibling, card);
+            }
+
+            saveCardOrder();
+            renderSettingsCardOrder();
+            updateNavDeckUI();
+        }
+
+        function saveCardOrder() {
+            const cards = Array.from(document.querySelectorAll('.app-card'));
+            const order = cards.map(c => c.getAttribute('data-card-id'));
+            localStorage.setItem('cardOrder', JSON.stringify(order));
+        }
+
+        function loadCardOrder() {
+            const saved = localStorage.getItem('cardOrder');
+            if (!saved) return;
+            try {
+                const order = JSON.parse(saved);
+                order.forEach(id => {
+                    const card = document.getElementById(id);
+                    if (card) {
+                        card.parentNode.appendChild(card);
+                    }
+                });
+            } catch (e) {
+                console.error("Failed to parse saved card order:", e);
+            }
         }
 
         /* ---------------- CARD NAVIGATION & STACK MANAGER ---------------- */
@@ -709,13 +837,13 @@
                 if (isHidden) hiddenCount++;
 
                 const row = document.createElement('div');
-                row.className = 'flex items-center justify-between p-2 hover:bg-sky-50 transition-colors text-xs font-medium';
+                row.className = 'flex items-center justify-between p-2 hover:bg-sky-50 dark:hover:bg-slate-700/50 transition-colors text-xs font-medium';
                 
                 row.innerHTML = `
-                    <button onclick="navigateToCard('${cardId}')" class="text-left font-bold ${isHidden ? 'text-slate-400 line-through' : 'text-slate-700'} hover:text-sky-600 truncate pr-2 flex-1">
+                    <button onclick="navigateToCard('${cardId}')" class="text-left font-bold ${isHidden ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'} hover:text-sky-600 dark:hover:text-sky-400 truncate pr-2 flex-1">
                         ${cardTitle}
                     </button>
-                    <button onclick="toggleCardVisibility('${cardId}', event)" class="px-2 py-0.5 rounded font-black text-[10px] tracking-wider transition-all ${isHidden ? 'bg-sky-600 hover:bg-sky-700 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-600'}">
+                    <button onclick="toggleCardVisibility('${cardId}', event)" class="px-2 py-0.5 rounded font-black text-[10px] tracking-wider transition-all ${isHidden ? 'bg-sky-600 hover:bg-sky-700 text-white' : 'bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300'}">
                         ${isHidden ? 'SHOW' : 'HIDE'}
                     </button>
                 `;
@@ -756,7 +884,7 @@
             const multiSelectContainer = document.getElementById('labelReportMultiSelect');
             if (globalLabelsCache && globalLabelsCache.length > 0) {
                 multiSelectContainer.innerHTML = globalLabelsCache.map(l => `
-                    <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer hover:bg-slate-100 p-1 rounded-md">
+                    <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 p-1 rounded-md">
                         <input type="checkbox" value="${l.id}" class="label-report-checkbox accent-indigo-600 rounded" checked onchange="renderLabelReport()">
                         <span class="truncate">${l.name}</span>
                     </label>
@@ -769,7 +897,7 @@
             const incomeMultiSelectContainer = document.getElementById('incomeLabelReportMultiSelect');
             if (globalLabelsCache && globalLabelsCache.length > 0) {
                 incomeMultiSelectContainer.innerHTML = globalLabelsCache.map(l => `
-                    <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer hover:bg-slate-100 p-1 rounded-md">
+                    <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-600 p-1 rounded-md">
                         <input type="checkbox" value="${l.id}" class="income-report-checkbox accent-emerald-600 rounded" checked onchange="renderLabelReport()">
                         <span class="truncate">${l.name}</span>
                     </label>
@@ -800,6 +928,9 @@
         }
 
         async function init() {
+            initTheme();
+            loadCardOrder();
+            renderSettingsCardOrder();
             updateNavDeckUI();
 
             // Initialize sql.js WebAssembly engine
@@ -1141,13 +1272,13 @@
             
             const isInc = pointData.type === 'income';
             badgeEl.innerText = isInc ? 'INCOME' : 'EXPENSE';
-            badgeEl.className = `px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${isInc ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`;
+            badgeEl.className = `px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${isInc ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'}`;
 
             document.getElementById('chartModalDate').innerText = pointData.x;
             document.getElementById('chartModalBalance').innerText = `$${pointData.y.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             
             amtEl.innerText = `${isInc ? '+' : '-'}$${parseFloat(pointData.rawAmount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            amtEl.className = `font-black ${isInc ? 'text-emerald-600' : 'text-rose-600'}`;
+            amtEl.className = `font-black ${isInc ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`;
             
             document.getElementById('chartModalDesc').innerText = pointData.description || 'N/A';
             document.getElementById('chartModalLabel').innerText = pointData.labelName || 'Uncategorized';
@@ -1317,6 +1448,10 @@
                 return;
             }
 
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? '#334155' : '#f1f5f9';
+            const labelColor = isDark ? '#cbd5e1' : '#334155';
+
             labelBarChart = new Chart(ctx, {
                 type: 'bar',
                 plugins: [ChartDataLabels],
@@ -1353,7 +1488,7 @@
                         datalabels: {
                             anchor: 'end',
                             align: 'end',
-                            color: '#334155',
+                            color: labelColor,
                             font: {
                                 size: 10,
                                 weight: 'bold'
@@ -1363,11 +1498,11 @@
                     },
                     scales: {
                         x: { 
-                            ticks: { font: { size: 9 }, callback: (value) => '$' + value },
-                            grid: { color: '#f1f5f9' }
+                            ticks: { font: { size: 9 }, color: labelColor, callback: (value) => '$' + value },
+                            grid: { color: gridColor }
                         },
                         y: { 
-                            ticks: { font: { size: 10, weight: 'bold' } },
+                            ticks: { font: { size: 10, weight: 'bold' }, color: labelColor },
                             grid: { display: false }
                         }
                     }
@@ -1548,21 +1683,21 @@
                     <tr class="${isFuture ? 'future-row' : ''} ${t.is_savings ? 'savings-row' : ''} ${t.is_loan ? 'loans-row' : ''}">
                         <td class="px-4 py-3 text-[9px] font-black text-slate-400 leading-tight">
                             ${tDate.toLocaleDateString()}<br>
-                            <span class="text-slate-500 font-bold">${timeString}</span><br>
-                            ${isFuture ? '<span class="text-indigo-600 font-bold uppercase text-[7px]">[FUTURE]</span>' : '<span class="text-emerald-600 font-bold uppercase text-[7px]">[OK]</span>'}
+                            <span class="text-slate-500 dark:text-slate-400 font-bold">${timeString}</span><br>
+                            ${isFuture ? '<span class="text-indigo-600 dark:text-indigo-400 font-bold uppercase text-[7px]">[FUTURE]</span>' : '<span class="text-emerald-600 dark:text-emerald-400 font-bold uppercase text-[7px]">[OK]</span>'}
                         </td>
                         <td class="px-4 py-3 text-left font-black text-xs ${isInc ? 'text-emerald-500' : 'text-rose-500'}">
                             $${amt.toLocaleString()}
                         </td>
                         <td class="px-4 py-3">
-                            <div class="font-bold text-slate-800 text-xs">${t.description}</div>
-                            <div class="text-[8px] uppercase font-black text-slate-400">${labelName} • <span class="text-slate-600">${owner}</span></div>
+                            <div class="font-bold text-slate-800 dark:text-slate-100 text-xs">${t.description}</div>
+                            <div class="text-[8px] uppercase font-black text-slate-400">${labelName} • <span class="text-slate-600 dark:text-slate-300">${owner}</span></div>
                         </td>
                         <td class="px-4 py-3 text-right">
                             <div class="flex items-center justify-end gap-3">
-                                ${isFuture ? `<button onclick="confirmTransaction('${t.id}')" class="text-indigo-600 font-black text-[9px]">CONFIRM</button>` : ''}
+                                ${isFuture ? `<button onclick="confirmTransaction('${t.id}')" class="text-indigo-600 dark:text-indigo-400 font-black text-[9px]">CONFIRM</button>` : ''}
                                 <button onclick="openEditModal('${t.id}')" class="text-slate-400 text-[9px] font-black uppercase">Edit</button>
-                                <button onclick="deleteTransaction('${t.id}')" class="text-slate-200 text-lg">&times;</button>
+                                <button onclick="deleteTransaction('${t.id}')" class="text-slate-200 dark:text-slate-500 text-lg">&times;</button>
                             </div>
                         </td>
                     </tr>`);
@@ -1609,6 +1744,10 @@
         function updateLineChart(timeline) {
             if (lineChart) lineChart.destroy();
             const ctx = document.getElementById('lineChart').getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? '#334155' : '#f1f5f9';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+
             lineChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1641,8 +1780,8 @@
                         }
                     },
                     scales: {
-                        x: { grid: { display: false } },
-                        y: { grid: { color: '#f1f5f9' } }
+                        x: { grid: { display: false }, ticks: { color: textColor } },
+                        y: { grid: { color: gridColor }, ticks: { color: textColor } }
                     }
                 }
             });
@@ -1651,6 +1790,10 @@
         function updateSavingsChart(timeline) {
             if (savingsChart) savingsChart.destroy();
             const ctx = document.getElementById('savingsChart').getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? '#334155' : '#f1f5f9';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+
             savingsChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1683,8 +1826,8 @@
                         }
                     },
                     scales: {
-                        x: { grid: { display: false } },
-                        y: { grid: { color: '#f1f5f9' } }
+                        x: { grid: { display: false }, ticks: { color: textColor } },
+                        y: { grid: { color: gridColor }, ticks: { color: textColor } }
                     }
                 }
             });
@@ -1693,6 +1836,10 @@
         function updateLoansChart(timeline) {
             if (loansChart) loansChart.destroy();
             const ctx = document.getElementById('loansChart').getContext('2d');
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? '#334155' : '#f1f5f9';
+            const textColor = isDark ? '#94a3b8' : '#64748b';
+
             loansChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -1709,7 +1856,7 @@
                             borderColor: ctx => {
                                 const p0 = ctx.p0.parsed.y;
                                 const p1 = ctx.p1.parsed.y;
-                                return p1 >= p0 ? '#fbbf24' : '#d97706'; // Lighter Amber for Income, Darker Amber for Expense
+                                return p1 >= p0 ? '#f59e0b' : '#b45309'; // Amber color gradient
                             }
                         }
                     }]
@@ -1725,8 +1872,8 @@
                         }
                     },
                     scales: {
-                        x: { grid: { display: false } },
-                        y: { grid: { color: '#f1f5f9' } }
+                        x: { grid: { display: false }, ticks: { color: textColor } },
+                        y: { grid: { color: gridColor }, ticks: { color: textColor } }
                     }
                 }
             });
