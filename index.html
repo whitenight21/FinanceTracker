@@ -121,7 +121,7 @@
                                 <label for="is_savings" class="text-[9px] font-black text-slate-500 uppercase cursor-pointer">Savings</label>
                             </div>
                             <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
-                                <input id="is_loan" type="checkbox" onchange="if(this.checked) document.getElementById('is_savings').checked = false;" class="w-4 h-4 accent-amber-500">
+                                <input id="is_loan" type="checkbox" onchange="if(this.checked) { document.getElementById('is_savings').checked = false; document.getElementById('owner_select').value = 'Loans'; }" class="w-4 h-4 accent-amber-500">
                                 <label for="is_loan" class="text-[9px] font-black text-slate-500 uppercase cursor-pointer">Loan</label>
                             </div>
                         </div>
@@ -311,6 +311,20 @@
                     <div class="h-48 md:h-64"><canvas id="savingsChart"></canvas></div>
                 </div>
 
+                <!-- LOANS TREND CARD -->
+                <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
+                        <h3 class="font-bold text-amber-600 text-[10px] uppercase tracking-widest">Loans Trend</h3>
+                        <div class="flex flex-wrap items-center gap-2 text-[10px] font-black">
+                            <span class="text-slate-400 uppercase">Start:</span>
+                            <input id="loansStart" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                            <span class="text-slate-400 uppercase">End:</span>
+                            <input id="loansEnd" type="date" onchange="calculateStats()" class="bg-slate-50 border-none rounded-lg p-1 outline-none font-bold">
+                        </div>
+                    </div>
+                    <div class="h-48 md:h-64"><canvas id="loansChart"></canvas></div>
+                </div>
+
                 <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                     <div class="flex justify-between items-center mb-4">
                         <button onclick="changeMonth(-1)" class="p-2 hover:bg-slate-100 rounded-full font-bold text-slate-400">←</button>
@@ -468,7 +482,7 @@
                         <label for="edit_savings" class="text-[10px] font-black uppercase text-slate-500 cursor-pointer">Savings</label>
                     </div>
                     <div class="flex items-center gap-2 p-2 bg-slate-50 rounded-xl">
-                        <input id="edit_loan" type="checkbox" onchange="if(this.checked) document.getElementById('edit_savings').checked = false;" class="w-5 h-5 accent-amber-500">
+                        <input id="edit_loan" type="checkbox" onchange="if(this.checked) { document.getElementById('edit_savings').checked = false; document.getElementById('edit_owner').value = 'Loans'; }" class="w-5 h-5 accent-amber-500">
                         <label for="edit_loan" class="text-[10px] font-black uppercase text-slate-500 cursor-pointer">Loan</label>
                     </div>
                 </div>
@@ -489,6 +503,7 @@
         let SQL;
         let lineChart;
         let savingsChart;
+        let loansChart;
         let labelBarChart; 
         let globalTransactionsCache = []; 
         let globalLabelsCache = [];
@@ -827,8 +842,8 @@
             const toDesc = userDesc ? `Transfer from ${fromAcc}: ${userDesc}` : `Transfer from ${fromAcc}`;
 
             // Resolve owners & savings settings
-            const fromOwner = (fromAcc === 'Savings' || fromAcc === 'Loans') ? fromAcc : fromAcc;
-            const toOwner = (toAcc === 'Savings' || toAcc === 'Loans') ? toAcc : toAcc;
+            const fromOwner = fromAcc;
+            const toOwner = toAcc;
 
             // Entry 1: Outflow (Expense)
             const outflowPayload = {
@@ -1141,9 +1156,16 @@
             if (savStartDate) savStartDate.setHours(0,0,0,0);
             if (savEndDate) savEndDate.setHours(23,59,59,999);
 
+            const loansStartVal = document.getElementById('loansStart').value;
+            const loansEndVal = document.getElementById('loansEnd').value;
+            let loansStartDate = loansStartVal ? new Date(loansStartVal) : null;
+            let loansEndDate = loansEndVal ? new Date(loansEndVal) : null;
+            if (loansStartDate) loansStartDate.setHours(0,0,0,0);
+            if (loansEndDate) loansEndDate.setHours(23,59,59,999);
+
             let netToday = 0, netMathias = 0, netJulia = 0;
-            let futureTotal = 0, savingsPool = 0, loansPool = 0, runningBal = 0, runningSavingsBal = 0;
-            const liquidTimeline = [], savingsTimeline = [];
+            let futureTotal = 0, savingsPool = 0, loansPool = 0, runningBal = 0, runningSavingsBal = 0, runningLoansBal = 0;
+            const liquidTimeline = [], savingsTimeline = [], loansTimeline = [];
             const dailyData = {};
 
             globalTransactionsCache.forEach(t => {
@@ -1160,6 +1182,15 @@
 
                 if (owner === 'Loans') {
                     loansPool += changeValue;
+                    runningLoansBal += changeValue;
+
+                    let inLoansRange = true;
+                    if (loansStartDate && tDate < loansStartDate) inLoansRange = false;
+                    if (loansEndDate && tDate > loansEndDate) inLoansRange = false;
+
+                    if (inLoansRange) {
+                        loansTimeline.push({ x: tDate.toLocaleDateString('en-US', {month:'short', day:'numeric'}), y: runningLoansBal, isFuture });
+                    }
                 } else if (t.is_savings) {
                     savingsPool += changeValue;
 
@@ -1209,6 +1240,7 @@
 
             updateLineChart(liquidTimeline);
             updateSavingsChart(savingsTimeline);
+            updateLoansChart(loansTimeline);
             renderLabelReport();
             renderCalendar(dailyData);
             renderFilteredHistory();
@@ -1394,6 +1426,61 @@
                             displayColors: false,
                             callbacks: {
                                 label: (ctx) => ` Savings: $${ctx.parsed.y.toLocaleString()}`
+                            }
+                        }
+                    },
+                    scales: { 
+                        x: { ticks: { font: { size: 8 }, maxRotation: 0 }, grid: { display: false } },
+                        y: { ticks: { font: { size: 8 } } }
+                    },
+                    interaction: { mode: 'index', intersect: false }
+                }
+            });
+        }
+
+        function updateLoansChart(timeline) {
+            if (loansChart) loansChart.destroy();
+            if (timeline.length === 0) {
+                const ctx = document.getElementById('loansChart').getContext('2d');
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                return;
+            }
+
+            loansChart = new Chart(document.getElementById('loansChart'), {
+                type: 'line',
+                data: {
+                    labels: timeline.map(d => d.x),
+                    datasets: [{
+                        data: timeline.map(d => d.y),
+                        borderWidth: 3,
+                        tension: 0.3,
+                        pointRadius: 2,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: 'transparent',
+                        pointBorderColor: 'transparent',
+                        fill: false,
+                        segment: {
+                            borderColor: ctx => {
+                                const y0 = ctx.p0.parsed.y;
+                                const y1 = ctx.p1.parsed.y;
+                                return y1 >= y0 ? '#d97706' : '#f59e0b'; 
+                            },
+                            borderDash: ctx => timeline[ctx.p1DataIndex]?.isFuture ? [3, 3] : undefined,
+                            borderWidth: ctx => timeline[ctx.p1DataIndex]?.isFuture ? 1.5 : 3
+                        }
+                    }]
+                },
+                options: { 
+                    responsive: true, maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#0f172a',
+                            titleFont: { size: 10 },
+                            bodyFont: { size: 12, weight: 'bold' },
+                            displayColors: false,
+                            callbacks: {
+                                label: (ctx) => ` Loans Pool: $${ctx.parsed.y.toLocaleString()}`
                             }
                         }
                     },
