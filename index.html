@@ -228,7 +228,8 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                    <!-- Owner & Type Mode Selection -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                         <div>
                             <label class="block text-[9px] font-black uppercase text-slate-400 mb-1 pl-1">Filter Owner</label>
                             <select id="labelReportOwnerSelect" onchange="renderLabelReport()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none">
@@ -237,15 +238,36 @@
                                 <option value="Julia">Julia</option>
                             </select>
                         </div>
+                        <div>
+                            <label class="block text-[9px] font-black uppercase text-slate-400 mb-1 pl-1">Chart Display Mode</label>
+                            <select id="labelReportChartMode" onchange="renderLabelReport()" class="w-full border-slate-200 border p-2 rounded-xl text-sm bg-slate-50 font-semibold outline-none">
+                                <option value="expense">Show Expense Breakdown</option>
+                                <option value="income">Show Income Breakdown</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Dual Multi-Select Dropdowns for Income vs Expense Labels -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                        <!-- Filter Income Means -->
                         <div class="relative">
                             <div class="flex justify-between items-center mb-1 pl-1">
-                                <label class="block text-[9px] font-black uppercase text-slate-400">Filter Expense Labels</label>
+                                <label class="block text-[9px] font-black uppercase text-slate-400">Means of Income</label>
+                                <button type="button" onclick="toggleAllIncomeLabelsReport()" id="toggleAllIncomeBtn" class="text-[9px] font-bold text-emerald-600 hover:text-emerald-800">Deselect All</button>
+                            </div>
+                            <div class="border-slate-200 border rounded-xl bg-slate-50 p-2 max-h-32 overflow-y-auto custom-scrollbar space-y-1" id="incomeLabelReportMultiSelect">
+                                <!-- Income checkboxes populated dynamically -->
+                            </div>
+                        </div>
+
+                        <!-- Filter Expense Labels -->
+                        <div class="relative">
+                            <div class="flex justify-between items-center mb-1 pl-1">
+                                <label class="block text-[9px] font-black uppercase text-slate-400">Expense Labels</label>
                                 <button type="button" onclick="toggleAllLabelsReport()" id="toggleAllLabelsBtn" class="text-[9px] font-bold text-indigo-600 hover:text-indigo-800">Deselect All</button>
                             </div>
-                            
-                            <!-- Multi-Select Label Dropdown Box -->
                             <div class="border-slate-200 border rounded-xl bg-slate-50 p-2 max-h-32 overflow-y-auto custom-scrollbar space-y-1" id="labelReportMultiSelect">
-                                <!-- Checkboxes populated dynamically -->
+                                <!-- Expense checkboxes populated dynamically -->
                             </div>
                         </div>
                     </div>
@@ -492,7 +514,7 @@
             
             document.getElementById('history_label_filter').innerHTML = '<option value="all">All Labels</option>' + labelOptions;
             
-            // Build Multi-Select for Label Report (Defaults to ALL checked)
+            // Build Multi-Select for Expense Labels
             const multiSelectContainer = document.getElementById('labelReportMultiSelect');
             if (globalLabelsCache && globalLabelsCache.length > 0) {
                 multiSelectContainer.innerHTML = globalLabelsCache.map(l => `
@@ -504,11 +526,34 @@
             } else {
                 multiSelectContainer.innerHTML = '<span class="text-xs text-slate-400 p-1 block">No labels available</span>';
             }
+
+            // Build Multi-Select for Income Means (Labels)
+            const incomeMultiSelectContainer = document.getElementById('incomeLabelReportMultiSelect');
+            if (globalLabelsCache && globalLabelsCache.length > 0) {
+                incomeMultiSelectContainer.innerHTML = globalLabelsCache.map(l => `
+                    <label class="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer hover:bg-slate-100 p-1 rounded-md">
+                        <input type="checkbox" value="${l.id}" class="income-report-checkbox accent-emerald-600 rounded" checked onchange="renderLabelReport()">
+                        <span class="truncate">${l.name}</span>
+                    </label>
+                `).join('');
+            } else {
+                incomeMultiSelectContainer.innerHTML = '<span class="text-xs text-slate-400 p-1 block">No labels available</span>';
+            }
         }
 
         function toggleAllLabelsReport() {
             const checkboxes = document.querySelectorAll('.label-report-checkbox');
             const toggleBtn = document.getElementById('toggleAllLabelsBtn');
+            const shouldCheckAll = toggleBtn.innerText === 'Select All';
+
+            checkboxes.forEach(cb => cb.checked = shouldCheckAll);
+            toggleBtn.innerText = shouldCheckAll ? 'Deselect All' : 'Select All';
+            renderLabelReport();
+        }
+
+        function toggleAllIncomeLabelsReport() {
+            const checkboxes = document.querySelectorAll('.income-report-checkbox');
+            const toggleBtn = document.getElementById('toggleAllIncomeBtn');
             const shouldCheckAll = toggleBtn.innerText === 'Select All';
 
             checkboxes.forEach(cb => cb.checked = shouldCheckAll);
@@ -903,10 +948,15 @@
             const startVal = document.getElementById('labelReportStart').value;
             const endVal = document.getElementById('labelReportEnd').value;
             const selectedOwner = document.getElementById('labelReportOwnerSelect').value;
+            const chartMode = document.getElementById('labelReportChartMode') ? document.getElementById('labelReportChartMode').value : 'expense';
 
-            // Get selected label IDs from the multi-select checkboxes
-            const selectedCheckboxes = Array.from(document.querySelectorAll('.label-report-checkbox:checked'));
-            const selectedLabelIds = selectedCheckboxes.map(cb => String(cb.value));
+            // Get selected Expense label IDs
+            const selectedExpenseCheckboxes = Array.from(document.querySelectorAll('.label-report-checkbox:checked'));
+            const selectedExpenseLabelIds = selectedExpenseCheckboxes.map(cb => String(cb.value));
+
+            // Get selected Income label IDs
+            const selectedIncomeCheckboxes = Array.from(document.querySelectorAll('.income-report-checkbox:checked'));
+            const selectedIncomeLabelIds = selectedIncomeCheckboxes.map(cb => String(cb.value));
 
             let startDate = startVal ? new Date(startVal) : null;
             let endDate = endVal ? new Date(endVal) : null;
@@ -916,6 +966,7 @@
             let totalIncome = 0;
             let totalExpenses = 0;
             const labelExpenseTotals = {};
+            const labelIncomeTotals = {};
 
             const labelMap = {};
             globalLabelsCache.forEach(l => labelMap[l.id] = l.name);
@@ -931,10 +982,15 @@
                 const amt = parseFloat(t.amount);
 
                 if (t.type === 'income') {
-                    totalIncome += amt;
+                    // Filter income totals by selected income means
+                    if (selectedIncomeLabelIds.includes(String(t.label_id))) {
+                        totalIncome += amt;
+                        const lname = t.labels?.name || labelMap[t.label_id] || 'Uncategorized';
+                        labelIncomeTotals[lname] = (labelIncomeTotals[lname] || 0) + amt;
+                    }
                 } else if (t.type === 'expense') {
-                    // Include in expense totals only if label is selected
-                    if (selectedLabelIds.includes(String(t.label_id))) {
+                    // Filter expense totals by selected expense labels
+                    if (selectedExpenseLabelIds.includes(String(t.label_id))) {
                         totalExpenses += amt;
                         const lname = t.labels?.name || labelMap[t.label_id] || 'Uncategorized';
                         labelExpenseTotals[lname] = (labelExpenseTotals[lname] || 0) + amt;
@@ -945,8 +1001,12 @@
             document.getElementById('labelReportTotalIncome').innerText = `$${totalIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('labelReportTotalExpenses').innerText = `$${totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
-            const sortedLabels = Object.keys(labelExpenseTotals).sort((a, b) => labelExpenseTotals[b] - labelExpenseTotals[a]);
-            const sortedValues = sortedLabels.map(l => labelExpenseTotals[l]);
+            // Select dataset and formatting based on chosen Chart Display Mode
+            const activeTotals = (chartMode === 'income') ? labelIncomeTotals : labelExpenseTotals;
+            const chartLabel = (chartMode === 'income') ? 'Income Total' : 'Expense Total';
+
+            const sortedLabels = Object.keys(activeTotals).sort((a, b) => activeTotals[b] - activeTotals[a]);
+            const sortedValues = sortedLabels.map(l => activeTotals[l]);
             const barColors = sortedLabels.map((_, idx) => labelColors[idx % labelColors.length]);
 
             if (labelBarChart) labelBarChart.destroy();
@@ -963,7 +1023,7 @@
                 data: {
                     labels: sortedLabels,
                     datasets: [{
-                        label: 'Expense Total',
+                        label: chartLabel,
                         data: sortedValues,
                         backgroundColor: barColors,
                         borderRadius: 8,
@@ -987,7 +1047,7 @@
                             bodyFont: { size: 12 },
                             displayColors: true,
                             callbacks: {
-                                label: (ctx) => ` Expense: $${ctx.parsed.x.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
+                                label: (ctx) => ` ${chartLabel}: $${ctx.parsed.x.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`
                             }
                         },
                         datalabels: {
