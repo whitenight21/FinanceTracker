@@ -42,12 +42,15 @@
         .dark .weekend { background-color: #1a2332; }
         .today-border { border: 2px solid #3b82f6 !important; border-radius: 4px; }
 
-        /* Card Hidden Styling - Hidden completely from main view */
+        /* Card Hidden & Wide Styling */
         .app-card {
             transition: all 0.2s ease-in-out;
         }
         .app-card.card-hidden {
             display: none !important;
+        }
+        .app-card.card-wide {
+            grid-column: span 3 / span 3 !important;
         }
 
         /* Dark mode overrides for background elements */
@@ -75,6 +78,10 @@
         <div id="card-settings" data-card-id="card-settings" data-card-title="App Settings" class="app-card card-hidden bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 mb-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase tracking-widest">App Settings</h3>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="toggleCardWidth('card-settings')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                    <button onclick="toggleCardVisibility('card-settings', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                </div>
             </div>
 
             <div class="space-y-6">
@@ -143,6 +150,10 @@
                     <div id="card-new-entry" data-card-id="card-new-entry" data-card-title="New Entry" class="app-card bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="font-bold text-base text-slate-800 dark:text-slate-100">New Entry</h3>
+                            <div class="flex items-center gap-1.5">
+                                <button onclick="toggleCardWidth('card-new-entry')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                <button onclick="toggleCardVisibility('card-new-entry', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                            </div>
                         </div>
 
                         <div class="space-y-3">
@@ -193,6 +204,10 @@
                     <div id="card-transfer" data-card-id="card-transfer" data-card-title="Transfer Funds" class="app-card bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
                         <div class="flex justify-between items-center mb-3">
                             <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase tracking-widest">Transfer Funds</h3>
+                            <div class="flex items-center gap-1.5">
+                                <button onclick="toggleCardWidth('card-transfer')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                <button onclick="toggleCardVisibility('card-transfer', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                            </div>
                         </div>
                         
                         <div class="space-y-3">
@@ -239,6 +254,10 @@
                     <div id="card-labels" data-card-id="card-labels" data-card-title="Manage Labels" class="app-card bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
                         <div class="flex justify-between items-center mb-3">
                             <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase tracking-widest">Manage Labels</h3>
+                            <div class="flex items-center gap-1.5">
+                                <button onclick="toggleCardWidth('card-labels')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                <button onclick="toggleCardVisibility('card-labels', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                            </div>
                         </div>
                         
                         <!-- Add Label -->
@@ -283,6 +302,10 @@
                         <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                             <div class="flex justify-between items-center w-full sm:w-auto gap-3">
                                 <h3 class="font-bold text-slate-700 dark:text-slate-300 text-[10px] uppercase tracking-widest">Liquid Trend</h3>
+                                <div class="flex items-center gap-1.5 sm:hidden">
+                                    <button onclick="toggleCardWidth('card-liquid-trend')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                    <button onclick="toggleCardVisibility('card-liquid-trend', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                                </div>
                             </div>
                             <div class="flex flex-wrap items-center gap-2 text-[10px] font-black">
                                 <select id="trendOwner" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-700 dark:text-slate-200">
@@ -294,6 +317,10 @@
                                 <input id="trendStart" type="date" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
                                 <span class="text-slate-400 uppercase">End:</span>
                                 <input id="trendEnd" type="date" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
+                                <div class="hidden sm:flex items-center gap-1.5 ml-2">
+                                    <button onclick="toggleCardWidth('card-liquid-trend')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                    <button onclick="toggleCardVisibility('card-liquid-trend', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                                </div>
                             </div>
                         </div>
                         <div class="h-48 md:h-64"><canvas id="lineChart"></canvas></div>
@@ -304,12 +331,20 @@
                         <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                             <div class="flex justify-between items-center w-full sm:w-auto gap-3">
                                 <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-[10px] uppercase tracking-widest">Income / Expenses by Labels</h3>
+                                <div class="flex items-center gap-1.5 sm:hidden">
+                                    <button onclick="toggleCardWidth('card-label-breakdown')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                    <button onclick="toggleCardVisibility('card-label-breakdown', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                                </div>
                             </div>
                             <div class="flex items-center gap-2 text-[10px] font-black">
                                 <span class="text-slate-400 uppercase">Start:</span>
                                 <input id="labelReportStart" type="date" onchange="renderLabelReport()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
                                 <span class="text-slate-400 uppercase">End:</span>
                                 <input id="labelReportEnd" type="date" onchange="renderLabelReport()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
+                                <div class="hidden sm:flex items-center gap-1.5 ml-2">
+                                    <button onclick="toggleCardWidth('card-label-breakdown')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                    <button onclick="toggleCardVisibility('card-label-breakdown', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                                </div>
                             </div>
                         </div>
 
@@ -378,6 +413,10 @@
                         <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                             <div class="flex justify-between items-center w-full sm:w-auto gap-3">
                                 <h3 class="font-bold text-sky-600 dark:text-sky-400 text-[10px] uppercase tracking-widest">Savings Trend</h3>
+                                <div class="flex items-center gap-1.5 sm:hidden">
+                                    <button onclick="toggleCardWidth('card-savings-trend')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                    <button onclick="toggleCardVisibility('card-savings-trend', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                                </div>
                             </div>
                             <div class="flex flex-wrap items-center gap-2 text-[10px] font-black">
                                 <select id="savingsOwner" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-700 dark:text-slate-200">
@@ -389,6 +428,10 @@
                                 <input id="savingsStart" type="date" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
                                 <span class="text-slate-400 uppercase">End:</span>
                                 <input id="savingsEnd" type="date" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
+                                <div class="hidden sm:flex items-center gap-1.5 ml-2">
+                                    <button onclick="toggleCardWidth('card-savings-trend')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                    <button onclick="toggleCardVisibility('card-savings-trend', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                                </div>
                             </div>
                         </div>
                         <div class="h-48 md:h-64"><canvas id="savingsChart"></canvas></div>
@@ -399,6 +442,10 @@
                         <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                             <div class="flex justify-between items-center w-full sm:w-auto gap-3">
                                 <h3 class="font-bold text-amber-600 dark:text-amber-400 text-[10px] uppercase tracking-widest">Loans Trend</h3>
+                                <div class="flex items-center gap-1.5 sm:hidden">
+                                    <button onclick="toggleCardWidth('card-loans-trend')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                    <button onclick="toggleCardVisibility('card-loans-trend', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                                </div>
                             </div>
                             <div class="flex flex-wrap items-center gap-2 text-[10px] font-black">
                                 <select id="loansOwner" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-700 dark:text-slate-200">
@@ -410,6 +457,10 @@
                                 <input id="loansStart" type="date" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
                                 <span class="text-slate-400 uppercase">End:</span>
                                 <input id="loansEnd" type="date" onchange="calculateStats()" class="bg-slate-50 dark:bg-slate-700 border-none rounded-lg p-1 outline-none font-bold text-slate-800 dark:text-slate-100">
+                                <div class="hidden sm:flex items-center gap-1.5 ml-2">
+                                    <button onclick="toggleCardWidth('card-loans-trend')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                    <button onclick="toggleCardVisibility('card-loans-trend', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                                </div>
                             </div>
                         </div>
                         <div class="h-48 md:h-64"><canvas id="loansChart"></canvas></div>
@@ -422,6 +473,10 @@
                             <h3 id="calendar-month-name" class="font-black text-slate-800 dark:text-slate-100 text-[11px] uppercase tracking-tighter"></h3>
                             <div class="flex items-center gap-2">
                                 <button onclick="changeMonth(1)" class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full font-bold text-slate-400">&rarr;</button>
+                                <div class="flex items-center gap-1.5 ml-2">
+                                    <button onclick="toggleCardWidth('card-calendar')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                    <button onclick="toggleCardVisibility('card-calendar', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                                </div>
                             </div>
                         </div>
                         <div class="calendar-grid" id="calendar-body">
@@ -434,6 +489,10 @@
                     <div id="card-label-lookup" data-card-id="card-label-lookup" data-card-title="Label Expense Lookup" class="app-card bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700">
                         <div class="flex justify-between items-center mb-4">
                             <h3 class="font-bold text-slate-700 dark:text-slate-300 text-[10px] uppercase tracking-widest">Label Expense Lookup</h3>
+                            <div class="flex items-center gap-1.5">
+                                <button onclick="toggleCardWidth('card-label-lookup')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                <button onclick="toggleCardVisibility('card-label-lookup', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                            </div>
                         </div>
                         
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
@@ -482,6 +541,10 @@
                                     </svg>
                                     <span>Export Data</span>
                                 </button>
+                                <div class="flex items-center gap-1.5 ml-1">
+                                    <button onclick="toggleCardWidth('card-ledger')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
+                                    <button onclick="toggleCardVisibility('card-ledger', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
+                                </div>
                             </div>
                         </div>
 
@@ -807,6 +870,28 @@
             updateNavDeckUI();
 
             // Refit charts when cards are unhidden
+            setTimeout(() => {
+                if (lineChart) lineChart.resize();
+                if (savingsChart) savingsChart.resize();
+                if (loansChart) loansChart.resize();
+                if (labelBarChart) labelBarChart.resize();
+            }, 300);
+        }
+
+        function toggleCardWidth(cardId) {
+            const cardEl = document.getElementById(cardId);
+            if (!cardEl) return;
+            cardEl.classList.toggle('card-wide');
+            
+            const btn = cardEl.querySelector('.card-wide-btn');
+            if (btn) {
+                const isWide = cardEl.classList.contains('card-wide');
+                btn.innerText = isWide ? 'NARROW' : 'WIDE';
+                btn.className = isWide 
+                    ? 'card-wide-btn px-2 py-0.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded font-black text-[9px] transition-all'
+                    : 'card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all';
+            }
+
             setTimeout(() => {
                 if (lineChart) lineChart.resize();
                 if (savingsChart) savingsChart.resize();
