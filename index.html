@@ -252,6 +252,20 @@
 
                         <hr class="border-slate-100 dark:border-slate-700 my-3">
 
+                        <!-- Edit Label -->
+                        <div class="mb-4 space-y-2">
+                            <label class="block text-[8px] font-black uppercase text-slate-400 pl-1">Edit Label Name</label>
+                            <div class="space-y-2">
+                                <select id="edit_label_select" onchange="openEditLabelUI()" class="w-full border-slate-200 dark:border-slate-600 border p-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-700 font-semibold outline-none text-slate-800 dark:text-slate-100"></select>
+                                <div class="flex gap-2">
+                                    <input id="edit_label_name" type="text" placeholder="Updated Label Name" class="flex-1 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 border p-2 rounded-xl text-xs font-semibold outline-none text-slate-800 dark:text-slate-100">
+                                    <button onclick="renameSelectedLabel()" class="bg-amber-500 hover:bg-amber-600 text-white font-black px-3 py-2 rounded-xl text-xs transition-all shadow-sm">Update</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="border-slate-100 dark:border-slate-700 my-3">
+
                         <!-- Remove Label -->
                         <div class="space-y-2">
                             <label class="block text-[8px] font-black uppercase text-slate-400 pl-1">Remove Selected Label</label>
@@ -879,9 +893,13 @@
             document.getElementById('edit_label').innerHTML = labelOptions;
             document.getElementById('lookupLabel').innerHTML = labelOptions;
             document.getElementById('delete_label_select').innerHTML = labelOptions;
+            document.getElementById('edit_label_select').innerHTML = labelOptions;
             
             document.getElementById('history_label_filter').innerHTML = '<option value="all">All Labels</option>' + labelOptions;
             
+            // Populate input for editing current selected label
+            openEditLabelUI();
+
             // Build Multi-Select for Expense Labels
             const multiSelectContainer = document.getElementById('labelReportMultiSelect');
             if (globalLabelsCache && globalLabelsCache.length > 0) {
@@ -906,6 +924,16 @@
                 `).join('');
             } else {
                 incomeMultiSelectContainer.innerHTML = '<span class="text-xs text-slate-400 p-1 block">No labels available</span>';
+            }
+        }
+
+        function openEditLabelUI() {
+            const select = document.getElementById('edit_label_select');
+            const input = document.getElementById('edit_label_name');
+            if (select && select.options.length > 0 && select.selectedIndex >= 0) {
+                input.value = select.options[select.selectedIndex].text;
+            } else if (input) {
+                input.value = '';
             }
         }
 
@@ -966,6 +994,32 @@
             }
 
             nameInput.value = '';
+            await refreshLabels();
+            calculateStats();
+        }
+
+        async function renameSelectedLabel() {
+            const labelSelect = document.getElementById('edit_label_select');
+            const nameInput = document.getElementById('edit_label_name');
+            const labelId = labelSelect.value;
+            const updatedName = nameInput.value.trim();
+
+            if (!labelId) {
+                alert("Please select a label to edit.");
+                return;
+            }
+
+            if (!updatedName) {
+                alert("Please enter a valid label name.");
+                return;
+            }
+
+            const { error } = await supabaseClient.from('labels').update({ name: updatedName }).eq('id', labelId);
+            if (error) {
+                alert("Error updating label name: " + error.message);
+                return;
+            }
+
             await refreshLabels();
             calculateStats();
         }
@@ -1858,7 +1912,7 @@
                             borderColor: ctx => {
                                 const p0 = ctx.p0.parsed.y;
                                 const p1 = ctx.p1.parsed.y;
-                                return p1 >= p0 ? '#f59e0b' : '#d97706'; // Amber colors
+                                return p1 >= p0 ? '#fbbf24' : '#d97706'; // Amber colors for loans
                             }
                         }
                     }]
@@ -1881,7 +1935,7 @@
             });
         }
 
-        window.addEventListener('DOMContentLoaded', init);
+        window.onload = init;
     </script>
 </body>
 </html>
