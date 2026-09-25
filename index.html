@@ -1786,13 +1786,18 @@
                         label: 'Liquid Net Worth',
                         data: data.map(d => d.y),
                         borderColor: '#6366f1',
-                        backgroundColor: 'rgba(99, 102, 241, 0.05)',
                         borderWidth: 2,
-                        fill: true,
+                        fill: false,
                         tension: 0.1,
-                        pointBackgroundColor: data.map(d => d.type === 'income' ? '#10b981' : '#ef4444'),
-                        pointRadius: 4,
-                        pointHoverRadius: 6
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        segment: {
+                            borderColor: ctx => {
+                                const p0 = ctx.p0.parsed.y;
+                                const p1 = ctx.p1.parsed.y;
+                                return p1 >= p0 ? '#10b981' : '#ef4444'; // Green if up, Red if down
+                            }
+                        }
                     }]
                 },
                 options: {
@@ -1837,11 +1842,17 @@
                         borderColor: '#0ea5e9',
                         backgroundColor: 'rgba(14, 165, 233, 0.05)',
                         borderWidth: 2,
-                        fill: true,
+                        fill: false,
                         tension: 0.1,
-                        pointBackgroundColor: data.map(d => d.type === 'income' ? '#10b981' : '#ef4444'),
-                        pointRadius: 4,
-                        pointHoverRadius: 6
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        segment: {
+                            borderColor: ctx => {
+                                const p0 = ctx.p0.parsed.y;
+                                const p1 = ctx.p1.parsed.y;
+                                return p1 >= p0 ? '#38bdf8' : '#0284c7'; // Lighter Sky Blue for Income, Darker Sky Blue for Expense
+                            }
+                        }
                     }]
                 },
                 options: {
@@ -1888,9 +1899,15 @@
                         borderWidth: 2,
                         fill: true,
                         tension: 0.1,
-                        pointBackgroundColor: data.map(d => d.type === 'income' ? '#10b981' : '#ef4444'),
-                        pointRadius: 4,
-                        pointHoverRadius: 6
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        segment: {
+                            borderColor: ctx => {
+                                const p0 = ctx.p0.parsed.y;
+                                const p1 = ctx.p1.parsed.y;
+                                return p1 >= p0 ? '#f59e0b' : '#b45309'; // Amber color gradient
+                            }
+                        }
                     }]
                 },
                 options: {
