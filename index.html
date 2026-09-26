@@ -1916,10 +1916,10 @@
                                 const p0 = ctx.p0.parsed.y;
                                 const p1 = ctx.p1.parsed.y;
                                 return p1 >= p0 ? '#10b981' : '#ef4444';
-                                borderDash: ctx => {
-        // If the starting or ending point is at or past your split index, make it dashed
-        return ctx.p0Index >= splitIndex ? [4, 4] : undefined;
-                                }
+                            },
+                        borderDash: ctx => {
+                            const isFuture = timelineData[ctx.p0DataIndex]?.isFuture || timelineData[ctx.p1DataIndex]?.isFuture;
+                            return isFuture ? [5, 5] : undefined;
                             }
                         }
                     }]
