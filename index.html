@@ -1910,7 +1910,14 @@
                         tension: 0.2,
                         pointBackgroundColor: timelineData.map(d => d.isFuture ? '#818cf8' : '#4f46e5'),
                         pointRadius: 0,
-                        pointHoverRadius: 9
+                        pointHoverRadius: 9,
+                        segment: {
+                            borderColor: ctx => {
+                                const p0 = ctx.p0.parsed.y;
+                                const p1 = ctx.p1.parsed.y;
+                                return p1 >= p0 ? '#10b981' : '#ef4444';
+                            }
+                        }
                     }]
                 },
                 options: {
