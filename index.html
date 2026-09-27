@@ -15,7 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
     <!-- sql.js WebAssembly Library for Binary SQLite Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/sql-wasm.js"></script>
-    <title>VaultFlow</title>
+    <title>Zaznamity</title>
     <style>
         .future-row { background-color: rgba(99, 102, 241, 0.09); border-left: none; }
         .savings-row { background-color: rgba(240, 249, 255, 0.4); }
@@ -147,7 +147,7 @@
             <!-- NEW ENTRY CARD -->
             <div id="card-new-entry" data-card-id="card-new-entry" data-card-title="New Entry" class="app-card lg:col-span-1 bg-white dark:bg-slate-800 p-5 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700">
                 <div class="flex items-center justify-between mb-4">
-                    <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase tracking-widest">New Entry</h3>
+                    <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase tracking-widest">New Zaznam</h3>
                     <div class="flex items-center gap-1.5">
                         <button onclick="toggleCardWidth('card-new-entry')" class="card-wide-btn px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">WIDE</button>
                         <button onclick="toggleCardVisibility('card-new-entry', event)" class="px-2 py-0.5 bg-slate-100 dark:bg-slate-700 hover:bg-rose-100 hover:text-rose-600 text-slate-600 dark:text-slate-300 rounded font-black text-[9px] transition-all">HIDE</button>
@@ -223,7 +223,7 @@
                         </div>
                     </div>
 
-                    <button onclick="addTransaction()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-2.5 rounded-xl shadow-md text-xs transition-all">Save Entry</button>
+                    <button onclick="addTransaction()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-2.5 rounded-xl shadow-md text-xs transition-all">Save Zaznam</button>
                 </div>
             </div>
 
@@ -555,10 +555,10 @@
                 </div>
             </div>
 
-            <!-- LEDGER HISTORY CARD -->
+            <!-- ZAZNAM HISTORY CARD -->
             <div id="card-ledger" data-card-id="card-ledger" data-card-title="Ledger History" class="app-card lg:col-span-3 bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden mb-12">
                 <div class="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-                    <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase tracking-widest">Ledger History</h3>
+                    <h3 class="font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase tracking-widest">Zaznam History</h3>
                     <div class="flex items-center gap-2">
                         <button onclick="toggleExportPanel()" class="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-xl font-black text-xs transition-all border border-emerald-200 dark:border-emerald-800">
                             <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
@@ -2029,7 +2029,7 @@
 
             historyBody.innerHTML = '';
             if (filtered.length === 0) {
-                historyBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-xs text-slate-400 font-bold">No ledger history matches filter criteria.</td></tr>`;
+                historyBody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-xs text-slate-400 font-bold">No zaznam history matches filter criteria.</td></tr>`;
                 return;
             }
 
